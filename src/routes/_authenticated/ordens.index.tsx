@@ -31,7 +31,7 @@ import {
   moeda,
   type OsStatus,
 } from "@/lib/br3";
-import { deserializarEstadoEConferencia } from "@/lib/conferencia-aparelho";
+
 
 const STATUS_FECHADOS: OsStatus[] = ["entregue", "cancelada", "orcamento_recusado"];
 
@@ -321,6 +321,9 @@ function Ordens() {
               const foiReabertaAnteriormente = Boolean(
                 o.estado_fisico && o.estado_fisico.includes('"reabertoEm"')
               );
+              const temLaudoHardware = Boolean(
+                o.estado_fisico && o.estado_fisico.includes('"diagnosticoHardware"')
+              );
 
               return (
                 <li
@@ -385,7 +388,7 @@ function Ordens() {
                       <span className="font-semibold text-foreground">
                         Total: {moeda(Number(o.valor_pecas) + Number(o.valor_mao_obra))}
                       </span>
-                      {encerramento?.diagnosticoHardware && (
+                      {temLaudoHardware && (
                         <span className="text-emerald-500 font-medium">
                           ✓ Laudo de Hardware Registrado
                         </span>
