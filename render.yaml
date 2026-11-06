@@ -18,13 +18,13 @@ services:
     # If you want to expose any environment variables (e.g., Supabase keys), add them here:
     envVars:
       - key: VITE_SUPABASE_URL
-        fromService: ""
+        value: "https://wfugtqltzfmisynurfil.supabase.co"
       - key: VITE_SUPABASE_ANON_KEY
-        fromService: ""
+        value: "sb_publishable_7kYdbVZuWRUcV74lWkL_0g_f3JHaWUd"
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
-        fromService: ""
+        value: "sb_publishable_7kYdbVZuWRUcV74lWkL_0g_f3JHaWUd"
       - key: VITE_SUPABASE_PROJECT_ID
-        fromService: ""
+        value: "wfugtqltzfmisynurfil"
       - key: NODE_ENV
         value: "production"
       - key: NITRO_PRESET

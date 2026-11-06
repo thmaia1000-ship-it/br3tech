@@ -36,8 +36,10 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     response.status === 500;
 
   if (isInternalServerError) {
-    console.error(consumeLastCapturedError() ?? new Error(`SSR 500 error: ${body}`));
-    return new Response(renderErrorPage(), {
+    const captured = consumeLastCapturedError();
+    const errorMsg = captured instanceof Error ? (captured.stack || captured.message) : String(captured || `SSR Error: ${body}`);
+    console.error(captured ?? new Error(`SSR 500 error: ${body}`));
+    return new Response(renderErrorPage(errorMsg), {
       status: 500,
       headers: { "content-type": "text/html; charset=utf-8" },
     });
@@ -63,7 +65,8 @@ export default {
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
+      const errorMsg = error instanceof Error ? (error.stack || error.message) : String(error);
+      return new Response(renderErrorPage(errorMsg), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
       });
