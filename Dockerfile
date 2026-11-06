@@ -35,8 +35,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    NITRO_HOST=0.0.0.0 \
-    PORT=8080
+    NITRO_HOST=0.0.0.0
 
 COPY --from=builder /app ./
 
