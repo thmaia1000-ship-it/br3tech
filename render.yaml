@@ -1,0 +1,35 @@
+# render.yaml – Render.com deployment configuration
+# This file tells Render how to build and run the app.
+# It uses the existing Dockerfile in the repository.
+
+services:
+  - type: web
+    name: br3tech
+    env: docker
+    # Render provides the $PORT environment variable at runtime.
+    # Our Dockerfile already reads PORT from the environment and binds to 0.0.0.0.
+    # No additional build command needed because Dockerfile handles the build.
+    # If you need to rebuild the Nitro output inside the image, the Dockerfile does it.
+    # The start command is defined in the Dockerfile CMD.
+    # Optional health check – Render will ping the root path.
+    healthCheckPath: "/"
+    # Optional: specify the region (render.com default is us-east) – you can change as needed.
+    region: oregon
+    # If you want to expose any environment variables (e.g., Supabase keys), add them here:
+    envVars:
+      - key: VITE_SUPABASE_URL
+        fromService: ""
+      - key: VITE_SUPABASE_ANON_KEY
+        fromService: ""
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        fromService: ""
+      - key: VITE_SUPABASE_PROJECT_ID
+        fromService: ""
+      - key: NODE_ENV
+        value: "production"
+      - key: NITRO_PRESET
+        value: "bun"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: NITRO_HOST
+        value: "0.0.0.0"
