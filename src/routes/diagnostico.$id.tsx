@@ -36,6 +36,9 @@ import {
   Zap,
   BatteryCharging,
   Battery,
+  ClipboardCheck,
+  Minus,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -43,11 +46,14 @@ import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LISTA_TESTES_HARDWARE,
+  ITENS_CHECKLIST_SAIDA,
   deserializarEstadoEConferencia,
   serializarEstadoEConferencia,
   type TesteHardwareId,
   type ResultadoTesteHardware,
   type DiagnosticoExecutado,
+  type ConferenciaChecklist,
+  type StatusConferencia,
 } from "@/lib/conferencia-aparelho";
 
 export const Route = createFileRoute("/diagnostico/$id")({
@@ -154,7 +160,28 @@ function PaginaDiagnosticoAparelho() {
   const [erro, setErro] = useState<string | null>(null);
   const [precisaLogin, setPrecisaLogin] = useState(false);
 
-  // Estado dos testes
+  // Aba ativa: "checklist" (Checklist de Inspeção de Saída) ou "hardware" (Bateria de testes de hardware)
+  const [abaAtiva, setAbaAtiva] = useState<"checklist" | "hardware">(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("tab") === "hardware") return "hardware";
+    }
+    return "checklist";
+  });
+
+  // Estado do Checklist de Inspeção de Saída no Celular
+  const [checklistSaida, setChecklistSaida] = useState<ConferenciaChecklist>(() => {
+    const inicial: ConferenciaChecklist = {};
+    for (const item of ITENS_CHECKLIST_SAIDA) {
+      inicial[item] = null;
+    }
+    return inicial;
+  });
+  const [obsChecklistSaida, setObsChecklistSaida] = useState("");
+  const [salvandoChecklist, setSalvandoChecklist] = useState(false);
+  const [checklistSalvoSucesso, setChecklistSalvoSucesso] = useState(false);
+
+  // Estado dos testes de hardware
   const [testeAtivo, setTesteAtivo] = useState<TesteHardwareId | null>(null);
   const [resultados, setResultados] = useState<Record<string, ResultadoTesteHardware>>({});
   const [salvandoDiagnostico, setSalvandoDiagnostico] = useState(false);
@@ -328,8 +355,17 @@ function PaginaDiagnosticoAparelho() {
 
         setOs(data);
 
-        // Se já tiver diagnóstico anterior gravado, pré-carrega
+        // Se já tiver encerramento ou checklist anterior gravado, pré-carrega
         const { encerramento } = deserializarEstadoEConferencia(data.estado_fisico);
+        if (encerramento?.checklistSaida) {
+          setChecklistSaida((prev) => ({
+            ...prev,
+            ...encerramento.checklistSaida,
+          }));
+        }
+        if (encerramento?.observacoesSaida) {
+          setObsChecklistSaida(encerramento.observacoesSaida);
+        }
         if (encerramento?.diagnosticoHardware?.testes) {
           setResultados(encerramento.diagnosticoHardware.testes);
           if (encerramento.diagnosticoHardware.observacoes) {
@@ -1463,6 +1499,75 @@ function PaginaDiagnosticoAparelho() {
     }
   };
 
+  // Ações do Checklist de Inspeção de Saída no Celular
+  const toggleChecklistItem = (item: string, status: StatusConferencia) => {
+    setChecklistSaida((prev) => ({
+      ...prev,
+      [item]: prev[item] === status ? null : status,
+    }));
+    setChecklistSalvoSucesso(false);
+  };
+
+  const marcarTodosChecklist = (status: StatusConferencia) => {
+    const novo: ConferenciaChecklist = {};
+    for (const item of ITENS_CHECKLIST_SAIDA) {
+      novo[item] = status;
+    }
+    setChecklistSaida(novo);
+    setChecklistSalvoSucesso(false);
+  };
+
+  // Salvar Checklist de Inspeção de Saída no banco de dados
+  const salvarChecklistSaidaNoBanco = async () => {
+    if (!os) return;
+    setSalvandoChecklist(true);
+
+    try {
+      const dadosAtuais = deserializarEstadoEConferencia(os.estado_fisico);
+      const novoEncerramento = {
+        ...(dadosAtuais.encerramento || {}),
+        checklistSaida,
+        observacoesSaida: obsChecklistSaida.trim() || dadosAtuais.encerramento?.observacoesSaida || "",
+        encerradoEm: dadosAtuais.encerramento?.encerradoEm || new Date().toISOString(),
+        tecnicoNome: os.profiles?.nome || "Técnico (Celular)",
+      };
+
+      const novoEstadoFisico = serializarEstadoEConferencia(
+        dadosAtuais.conferencia,
+        dadosAtuais.observacoes,
+        dadosAtuais.midias,
+        dadosAtuais.assinaturaAutorizacao,
+        novoEncerramento,
+      );
+
+      const { error } = await supabase
+        .from("ordens_servico")
+        .update({ estado_fisico: novoEstadoFisico })
+        .eq("id", os.id);
+
+      if (error) throw error;
+
+      const totalOk = Object.values(checklistSaida).filter((v) => v === "OK").length;
+      const totalDef = Object.values(checklistSaida).filter((v) => v === "Defeito").length;
+
+      await supabase.from("os_historico").insert({
+        os_id: os.id,
+        status: os.status,
+        observacao: `Checklist de Inspeção de Saída salvo no aparelho via QR Code: ${totalOk} OK, ${totalDef} Defeito.`,
+        usuario_id: null,
+        usuario_nome: "Checklist Saída QR Code",
+      });
+
+      setOs((prev: any) => ({ ...prev, estado_fisico: novoEstadoFisico }));
+      setChecklistSalvoSucesso(true);
+      toast.success("Checklist de inspeção de saída salvo com sucesso na OS!");
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao salvar checklist de saída.");
+    } finally {
+      setSalvandoChecklist(false);
+    }
+  };
+
   // Salvar diagnóstico no banco de dados na ordem de serviço
   const salvarNoBanco = async () => {
     if (!os) return;
@@ -1482,7 +1587,10 @@ function PaginaDiagnosticoAparelho() {
       };
 
       const dadosAtuais = deserializarEstadoEConferencia(os.estado_fisico);
-      const checklistSaidaAtual = { ...(dadosAtuais.encerramento?.checklistSaida || {}) };
+      const checklistSaidaAtual = {
+        ...(dadosAtuais.encerramento?.checklistSaida || {}),
+        ...checklistSaida,
+      };
 
       // Se o teste de carregamento foi aprovado, já sincroniza no checklist de saída
       if (resultados.charging?.status === "aprovado") {
@@ -1522,6 +1630,7 @@ function PaginaDiagnosticoAparelho() {
         usuario_nome: "Diagnóstico Hardware QR Code",
       });
 
+      setOs((prev: any) => ({ ...prev, estado_fisico: novoEstadoFisico }));
       setConcluido(true);
       toast.success("Diagnóstico de hardware sincronizado com a Ordem de Serviço!");
     } catch (err: any) {
@@ -1618,6 +1727,8 @@ function PaginaDiagnosticoAparelho() {
   const totalExecutados = Object.keys(resultados).length;
   const totalAprovados = Object.values(resultados).filter((r) => r.status === "aprovado").length;
   const totalReprovados = Object.values(resultados).filter((r) => r.status === "reprovado").length;
+  const totalChecklistOk = Object.values(checklistSaida).filter((v) => v === "OK").length;
+  const totalChecklistDefeito = Object.values(checklistSaida).filter((v) => v === "Defeito").length;
   const proximoPendente = LISTA_TESTES_HARDWARE.find((item) => !resultados[item.id]);
   const activeTestIndex = testeAtivo
     ? LISTA_TESTES_HARDWARE.findIndex((item) => item.id === testeAtivo)
@@ -2693,7 +2804,9 @@ function PaginaDiagnosticoAparelho() {
           <div className="flex items-center gap-2">
             <Logo size="sm" />
             <div>
-              <h1 className="text-sm font-black tracking-tight text-white">TESTE DE HARDWARE</h1>
+              <h1 className="text-sm font-black tracking-tight text-white">
+                {abaAtiva === "checklist" ? "CHECKLIST DE SAÍDA" : "TESTE DE HARDWARE"}
+              </h1>
               <p className="text-[11px] text-slate-400">
                 OS #{os.numero} · {modeloAparelho}
               </p>
@@ -2701,22 +2814,291 @@ function PaginaDiagnosticoAparelho() {
           </div>
 
           <div className="text-right">
-            <span className="text-xs font-bold text-emerald-400 font-mono">
-              {totalAprovados} OK
-            </span>
-            {totalReprovados > 0 && (
-              <span className="ml-2 text-xs font-bold text-rose-400 font-mono">
-                {totalReprovados} Falhas
-              </span>
+            {abaAtiva === "checklist" ? (
+              <div>
+                <span className="text-xs font-bold text-emerald-400 font-mono">
+                  {totalChecklistOk} OK
+                </span>
+                {totalChecklistDefeito > 0 && (
+                  <span className="ml-2 text-xs font-bold text-rose-400 font-mono">
+                    {totalChecklistDefeito} Falhas
+                  </span>
+                )}
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {totalChecklistOk}/{ITENS_CHECKLIST_SAIDA.length} itens
+                </p>
+              </div>
+            ) : (
+              <div>
+                <span className="text-xs font-bold text-emerald-400 font-mono">
+                  {totalAprovados} OK
+                </span>
+                {totalReprovados > 0 && (
+                  <span className="ml-2 text-xs font-bold text-rose-400 font-mono">
+                    {totalReprovados} Falhas
+                  </span>
+                )}
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {totalExecutados}/{totalTestes} testes
+                </p>
+              </div>
             )}
-            <p className="text-[10px] text-slate-500 font-mono">
-              {totalExecutados}/{totalTestes} testes
-            </p>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full p-4 space-y-4">
+      {/* SELETOR DE ABAS: CHECKLIST DE INSPEÇÃO DE SAÍDA vs TESTES DE HARDWARE */}
+      <div className="border-b border-slate-800 bg-slate-900/90 backdrop-blur px-3 py-2 sticky top-[65px] z-10">
+        <div className="max-w-2xl mx-auto flex gap-2">
+          <button
+            type="button"
+            onClick={() => setAbaAtiva("checklist")}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              abaAtiva === "checklist"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                : "bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            <span>Checklist de Saída</span>
+            <span
+              className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                abaAtiva === "checklist"
+                  ? "bg-white/20 text-white font-black"
+                  : "bg-slate-700 text-slate-300"
+              }`}
+            >
+              {totalChecklistOk}/{ITENS_CHECKLIST_SAIDA.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAbaAtiva("hardware")}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              abaAtiva === "hardware"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                : "bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            <span>Testes de Hardware</span>
+            <span
+              className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                abaAtiva === "hardware"
+                  ? "bg-white/20 text-white font-black"
+                  : "bg-slate-700 text-slate-300"
+              }`}
+            >
+              {totalExecutados}/{totalTestes}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {abaAtiva === "checklist" ? (
+        <main className="flex-1 max-w-2xl mx-auto w-full p-4 space-y-4">
+          {/* Card de Apresentação do Checklist de Saída */}
+          <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-950 p-4 shadow-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold shadow-md shrink-0">
+                  <ClipboardCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>Checklist de Saída</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+                      {totalChecklistOk} de {ITENS_CHECKLIST_SAIDA.length} OK
+                    </span>
+                  </h2>
+                  <p className="text-[11px] text-slate-300">
+                    Inspeção final obrigatória no aparelho antes da entrega ao cliente.
+                  </p>
+                </div>
+              </div>
+
+              {/* Porcentagem */}
+              <div className="text-right font-mono text-xs font-black text-emerald-400">
+                {Math.round((totalChecklistOk / ITENS_CHECKLIST_SAIDA.length) * 100)}%
+              </div>
+            </div>
+
+            {/* Barra de progresso */}
+            <div className="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden border border-slate-700/60">
+              <div
+                className="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full transition-all duration-300 rounded-full"
+                style={{
+                  width: `${Math.round((totalChecklistOk / ITENS_CHECKLIST_SAIDA.length) * 100)}%`,
+                }}
+              />
+            </div>
+
+            {/* Ações Rápidas */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => marcarTodosChecklist("OK")}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-sm flex items-center gap-1 cursor-pointer transition-transform"
+                >
+                  <Check className="h-3.5 w-3.5" /> Marcar Todos OK
+                </button>
+                <button
+                  type="button"
+                  onClick={() => marcarTodosChecklist("N/V")}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 cursor-pointer"
+                >
+                  <Minus className="h-3 w-3" /> Todos N/V
+                </button>
+              </div>
+
+              {totalChecklistDefeito > 0 && (
+                <span className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-1 rounded-lg">
+                  {totalChecklistDefeito} com defeito
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Lista de Itens do Checklist com toque rápido no celular */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <span className="font-bold uppercase tracking-wider text-slate-400 text-[11px]">
+                Itens de Inspeção de Saída ({ITENS_CHECKLIST_SAIDA.length})
+              </span>
+              <span className="text-slate-500 text-[10px]">
+                Toque nos botões para marcar
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {ITENS_CHECKLIST_SAIDA.map((item, idx) => {
+                const status = checklistSaida[item];
+                const isOk = status === "OK";
+                const isDef = status === "Defeito";
+                const isNV = status === "N/V";
+
+                return (
+                  <div
+                    key={item}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isOk
+                        ? "bg-emerald-950/25 border-emerald-500/40 shadow-sm"
+                        : isDef
+                          ? "bg-rose-950/25 border-rose-500/40 shadow-sm"
+                          : isNV
+                            ? "bg-slate-900/60 border-slate-800 text-slate-400"
+                            : "bg-slate-900/90 border-slate-800 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <span className="font-mono text-[10px] font-bold text-slate-500 shrink-0">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <p
+                          className={`text-xs font-semibold truncate ${
+                            isOk ? "text-emerald-300" : isDef ? "text-rose-300" : "text-white"
+                          }`}
+                          title={item}
+                        >
+                          {item}
+                        </p>
+                      </div>
+
+                      {/* Botões Grandes de Ação Touch para smartphone */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleChecklistItem(item, "OK")}
+                          className={`h-9 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                            isOk
+                              ? "bg-emerald-500 text-white shadow-md shadow-emerald-950/60 ring-2 ring-emerald-400 font-black"
+                              : "bg-slate-800 text-slate-300 hover:bg-emerald-500/20 hover:text-emerald-400 border border-slate-700"
+                          }`}
+                        >
+                          <Check className="h-4 w-4" />
+                          <span>OK</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleChecklistItem(item, "Defeito")}
+                          className={`h-9 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                            isDef
+                              ? "bg-rose-600 text-white shadow-md shadow-rose-950/60 ring-2 ring-rose-400 font-black"
+                              : "bg-slate-800 text-slate-300 hover:bg-rose-500/20 hover:text-rose-400 border border-slate-700"
+                          }`}
+                        >
+                          <X className="h-4 w-4" />
+                          <span>Defeito</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleChecklistItem(item, "N/V")}
+                          className={`h-9 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                            isNV
+                              ? "bg-slate-600 text-white shadow-sm ring-2 ring-slate-400 font-black"
+                              : "bg-slate-800/60 text-slate-500 hover:bg-slate-700 hover:text-slate-300 border border-slate-800"
+                          }`}
+                          title="Não Verificado"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Observações da Inspeção */}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3.5 space-y-2">
+            <label className="text-xs font-bold text-slate-300 block">
+              Observações da Inspeção de Saída:
+            </label>
+            <textarea
+              rows={2}
+              value={obsChecklistSaida}
+              onChange={(e) => setObsChecklistSaida(e.target.value)}
+              placeholder="Ex: Todos os testes concluídos; aparelho entregue com película protetora aplicada."
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          {/* Botão de Salvar Checklist no Celular */}
+          <div className="pt-2 pb-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+            <Button
+              type="button"
+              onClick={salvarChecklistSaidaNoBanco}
+              disabled={salvandoChecklist}
+              className="w-full h-12 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-lg shadow-emerald-950/50 gap-2 cursor-pointer"
+            >
+              {salvandoChecklist ? (
+                "Salvando na Ordem de Serviço..."
+              ) : checklistSalvoSucesso ? (
+                <>
+                  <Check className="h-5 w-5" /> Checklist de Saída Salvo com Sucesso!
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" /> Salvar Checklist de Saída na OS #{os.numero}
+                </>
+              )}
+            </Button>
+
+            {checklistSalvoSucesso && (
+              <p className="text-center text-xs text-emerald-400 mt-2 font-medium">
+                ✓ Sincronizado com a OS. O técnico no computador já visualiza todos os itens conferidos.
+              </p>
+            )}
+          </div>
+        </main>
+      ) : (
+        <main className="flex-1 max-w-2xl mx-auto w-full p-4 space-y-4">
         {/* CARD CENTRAL DE ROTINA DE PERMISSÕES DE HARDWARE */}
         <div className="rounded-2xl border border-cyan-500/40 bg-gradient-to-br from-cyan-950/40 via-slate-900/95 to-slate-950 p-4 shadow-xl shadow-black/40 space-y-3">
           <div className="flex items-start justify-between gap-3">
@@ -3020,6 +3402,7 @@ function PaginaDiagnosticoAparelho() {
           )}
         </div>
       </main>
-    </div>
-  );
+    )}
+  </div>
+);
 }

@@ -15,6 +15,7 @@ import {
   Zap,
   BatteryCharging,
   Battery,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "@/components/QRCodeSVG";
@@ -80,18 +81,21 @@ export function ModalEncerramentoOS({
     });
   }, []);
 
+  // Modo do QR Code: padrão abre direto o Checklist de Inspeção de Saída, com opção de testes de hardware
+  const [modoQrCode, setModoQrCode] = useState<"checklist" | "hardware">("checklist");
+
   const urlBase =
     usarIpRede && (hostnameAtual === "localhost" || hostnameAtual === "127.0.0.1")
       ? `http://${ipRedeLocal}:${portaAtual}`
       : originAtual;
 
-  const urlDiagnosticoLimpa = `${urlBase}/diagnostico/${osId}`;
-  const urlDiagnosticoComAuth = sessionAuth
-    ? `${urlDiagnosticoLimpa}#token=${encodeURIComponent(sessionAuth.access_token)}&refresh=${encodeURIComponent(sessionAuth.refresh_token)}`
-    : urlDiagnosticoLimpa;
+  const urlDestinoLimpa = `${urlBase}/diagnostico/${osId}?tab=${modoQrCode}`;
+  const urlDestinoComAuth = sessionAuth
+    ? `${urlDestinoLimpa}#token=${encodeURIComponent(sessionAuth.access_token)}&refresh=${encodeURIComponent(sessionAuth.refresh_token)}`
+    : urlDestinoLimpa;
 
   const urlDiagnostico =
-    incluirLoginAutomatico && sessionAuth ? urlDiagnosticoComAuth : urlDiagnosticoLimpa;
+    incluirLoginAutomatico && sessionAuth ? urlDestinoComAuth : urlDestinoLimpa;
 
   // Checklist de saída manual
   const [checklist, setChecklist] = useState<ConferenciaChecklist>(() => {
@@ -350,7 +354,7 @@ export function ModalEncerramentoOS({
               className="gap-1.5 text-xs font-bold border-primary/40 text-primary hover:bg-primary/10"
             >
               <QrCode className="h-4 w-4" />
-              <span>{mostrarQrCodeModal ? "Ocultar QR Code" : "QR Code Teste de Hardware"}</span>
+              <span>{mostrarQrCodeModal ? "Ocultar QR Code" : "QR Code Checklist de Saída"}</span>
             </Button>
 
             <Button
@@ -366,7 +370,7 @@ export function ModalEncerramentoOS({
           </div>
         </div>
 
-        {/* Painel do QR Code para Teste Interativo de Hardware no celular */}
+        {/* Painel do QR Code para Abertura do Checklist de Inspeção de Saída ou Teste de Hardware no celular */}
         {mostrarQrCodeModal && (
           <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3">
             <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -377,16 +381,43 @@ export function ModalEncerramentoOS({
                 </span>
               </div>
               <div className="space-y-2 text-center sm:text-left flex-1">
-                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[11px] font-bold">
-                  <Smartphone className="h-3.5 w-3.5" />
-                  <span>Diagnóstico no Aparelho</span>
+                {/* Seletor de Modo: Checklist de Saída ou Testes de Hardware */}
+                <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setModoQrCode("checklist")}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors ${
+                      modoQrCode === "checklist"
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                    }`}
+                  >
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                    <span>Checklist de Inspeção de Saída</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModoQrCode("hardware")}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors ${
+                      modoQrCode === "hardware"
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                    }`}
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    <span>Testes de Hardware</span>
+                  </button>
                 </div>
+
                 <h3 className="text-sm font-bold text-foreground">
-                  Aponte a câmera do aparelho para este QR Code
+                  {modoQrCode === "checklist"
+                    ? "Aponte a câmera para abrir o Checklist de Inspeção de Saída"
+                    : "Aponte a câmera para abrir a Suíte de Testes de Hardware"}
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Ele abre no celular a suíte completa de testes de hardware: Red, Green, Blue,
-                  Touch Grid, Speaker, Receiver, Câmeras, Microfone e Sensores.
+                  {modoQrCode === "checklist"
+                    ? "Abre diretamente na tela do aparelho a conferência completa dos 14 itens de inspeção de saída para marcar OK ou Defeito com 1 toque e salvar na OS."
+                    : "Ele abre no celular a suíte completa de testes de hardware: Red, Green, Blue, Touch Grid, Speaker, Receiver, Câmeras, Microfone e Sensores."}
                 </p>
 
                 {/* Alternância de IP para rede Wi-Fi */}
@@ -500,7 +531,7 @@ export function ModalEncerramentoOS({
                 className="text-xs h-7 gap-1 border-primary/40 text-primary hover:bg-primary/10 cursor-pointer"
               >
                 <QrCode className="h-3.5 w-3.5" />
-                <span>{mostrarQrCodeModal ? "Ocultar QR Code" : "Abrir Suíte QR Code"}</span>
+                <span>{mostrarQrCodeModal ? "Ocultar QR Code" : "Abrir QR Code (Checklist / Testes)"}</span>
               </Button>
             </div>
           </div>
