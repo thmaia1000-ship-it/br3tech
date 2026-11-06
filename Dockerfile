@@ -28,8 +28,8 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
 # Compila o projeto com preset de servidor universal
 RUN bun run build
 
-# Stage 2: Runtime estavel Debian para Google Cloud Run
-FROM oven/bun:1.2 AS runner
+# Stage 2: Runtime estavel Node.js 20 LTS (V8 engine que executa TanStack Start sem SyntaxError)
+FROM node:20-slim AS runner
 
 WORKDIR /app
 
@@ -41,5 +41,5 @@ COPY --from=builder /app ./
 
 EXPOSE 8080
 
-# Inicia o entrypoint resiliente do Cloud Run que escuta na porta $PORT
-CMD ["bun", "start-server.js"]
+# Inicia o entrypoint com Node.js nativo
+CMD ["node", "start-server.js"]
