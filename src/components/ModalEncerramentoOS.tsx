@@ -68,7 +68,7 @@ export function ModalEncerramentoOS({
     access_token: string;
     refresh_token: string;
   } | null>(null);
-  const [incluirLoginAutomatico, setIncluirLoginAutomatico] = useState(true);
+  const [incluirLoginAutomatico, setIncluirLoginAutomatico] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -90,9 +90,10 @@ export function ModalEncerramentoOS({
       : originAtual;
 
   const urlDestinoLimpa = `${urlBase}/diagnostico/${osId}?tab=${modoQrCode}`;
-  const urlDestinoComAuth = sessionAuth
-    ? `${urlDestinoLimpa}#token=${encodeURIComponent(sessionAuth.access_token)}&refresh=${encodeURIComponent(sessionAuth.refresh_token)}`
-    : urlDestinoLimpa;
+  const urlDestinoComAuth =
+    sessionAuth && sessionAuth.access_token && sessionAuth.access_token.length < 1200
+      ? `${urlDestinoLimpa}#token=${encodeURIComponent(sessionAuth.access_token)}`
+      : urlDestinoLimpa;
 
   const urlDiagnostico =
     incluirLoginAutomatico && sessionAuth ? urlDestinoComAuth : urlDestinoLimpa;

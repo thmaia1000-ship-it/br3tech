@@ -14,14 +14,36 @@ interface QRCodeSVGProps {
 
 export function QRCodeSVG({ value, size = 180, className = "" }: QRCodeSVGProps) {
   const qr = React.useMemo(() => {
-    try {
-      // Para URLs com tokens ou parâmetros longos, utiliza Ecc.LOW para gerar menos módulos e facilitar a leitura da câmera
-      const ecl = value.length > 120 ? qrcodegen.QrCode.Ecc.LOW : qrcodegen.QrCode.Ecc.MEDIUM;
-      return qrcodegen.QrCode.encodeText(value, ecl);
-    } catch (e) {
-      console.error("Erro ao gerar QR Code oficial:", e);
-      return null;
+    if (!value) return null;
+
+    const tentarGerar = (texto: string) => {
+      try {
+        const ecl = texto.length > 90 ? qrcodegen.QrCode.Ecc.LOW : qrcodegen.QrCode.Ecc.MEDIUM;
+        return qrcodegen.QrCode.encodeText(texto, ecl);
+      } catch (err) {
+        return null;
+      }
+    };
+
+    // 1. Tenta com o valor original
+    let res = tentarGerar(value);
+    if (res) return res;
+
+    // 2. Se falhar (ex: token JWT muito longo no hash #token=...), remove o hash e gera com a URL limpa
+    if (value.includes("#")) {
+      const urlSemHash = value.split("#")[0];
+      res = tentarGerar(urlSemHash);
+      if (res) return res;
     }
+
+    // 3. Fallback se tiver parâmetros excessivos
+    if (value.includes("?")) {
+      const urlBase = value.split("?")[0];
+      res = tentarGerar(urlBase);
+      if (res) return res;
+    }
+
+    return null;
   }, [value]);
 
   if (!qr) {
