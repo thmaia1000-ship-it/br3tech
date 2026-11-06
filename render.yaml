@@ -28,7 +28,7 @@ services:
       - key: NODE_ENV
         value: "production"
       - key: NITRO_PRESET
-        value: "bun"
+        value: "node-server"
       - key: HOST
         value: "0.0.0.0"
       - key: NITRO_HOST
