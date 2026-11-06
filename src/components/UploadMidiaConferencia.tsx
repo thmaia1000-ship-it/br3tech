@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Camera,
   Video,
@@ -10,6 +10,8 @@ import {
   FileImage,
   Film,
   Loader2,
+  SwitchCamera,
+  CircleDot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,8 +34,30 @@ export function UploadMidiaConferencia({
   const [itemVisualizando, setItemVisualizando] = useState<MidiaConferencia | null>(null);
 
   const fotoInputRef = useRef<HTMLInputElement>(null);
+  const cameraDiretaInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const geralInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados para câmera ao vivo integrada com MediaDevices (WebRTC)
+  const [cameraAoVivoAberta, setCameraAoVivoAberta] = useState(false);
+  const [streamCamera, setStreamCamera] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const canvasFotoRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (cameraAoVivoAberta && videoPreviewRef.current && streamCamera) {
+      videoPreviewRef.current.srcObject = streamCamera;
+    }
+  }, [cameraAoVivoAberta, streamCamera]);
+
+  useEffect(() => {
+    return () => {
+      if (streamCamera) {
+        streamCamera.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [streamCamera]);
 
   const processarArquivos = async (arquivos: FileList | File[]) => {
     if (somenteLeitura || !onChange) return;
@@ -130,6 +154,80 @@ export function UploadMidiaConferencia({
   const totalFotos = midias.filter((m) => m.tipo === "imagem").length;
   const totalVideos = midias.filter((m) => m.tipo === "video").length;
 
+  // Iniciar câmera integrada via WebRTC ou fallback para input capture
+  const iniciarCameraAoVivo = async (modo: "environment" | "user" = facingMode) => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      // Fallback em navegadores que não suportam getUserMedia: aciona o seletor nativo de câmera
+      cameraDiretaInputRef.current?.click();
+      return;
+    }
+
+    try {
+      if (streamCamera) {
+        streamCamera.getTracks().forEach((t) => t.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: modo },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+      setStreamCamera(stream);
+      setCameraAoVivoAberta(true);
+      setFacingMode(modo);
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.warn("Acesso direto à câmera via getUserMedia não disponível, usando seletor nativo:", err);
+      // Se permissão for negada ou sem HTTPS/suporte direto, abre a câmera pelo input nativo do celular
+      cameraDiretaInputRef.current?.click();
+    }
+  };
+
+  const pararCameraAoVivo = () => {
+    if (streamCamera) {
+      streamCamera.getTracks().forEach((t) => t.stop());
+      setStreamCamera(null);
+    }
+    setCameraAoVivoAberta(false);
+  };
+
+  const alternarCamera = () => {
+    const proximoModo = facingMode === "environment" ? "user" : "environment";
+    iniciarCameraAoVivo(proximoModo);
+  };
+
+  const tirarFotoNaCamera = async () => {
+    const video = videoPreviewRef.current;
+    const canvas = canvasFotoRef.current;
+    if (!video || !canvas || !onChange) return;
+
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, width, height);
+
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) return;
+        const arquivo = new File([blob], `foto-camera-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        await processarArquivos([arquivo]);
+        pararCameraAoVivo();
+      },
+      "image/jpeg",
+      0.88,
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Resumo de mídias */}
@@ -154,6 +252,18 @@ export function UploadMidiaConferencia({
 
         {!somenteLeitura && (
           <div className="flex items-center gap-2">
+            {/* Input direto que abre o aplicativo nativo da câmera no celular */}
+            <input
+              type="file"
+              ref={cameraDiretaInputRef}
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) processarArquivos(e.target.files);
+                e.target.value = "";
+              }}
+            />
             <input
               type="file"
               ref={fotoInputRef}
@@ -187,6 +297,19 @@ export function UploadMidiaConferencia({
               }}
             />
 
+            {/* BOTÃO PRINCIPAL: ABRIR CÂMERA DO CELULAR */}
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              disabled={carregando}
+              onClick={() => iniciarCameraAoVivo("environment")}
+              className="gap-1.5 text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+              title="Abrir a câmera do celular para tirar fotos da OS diretamente"
+            >
+              <Camera className="h-4 w-4" /> Tirar Foto (Câmera)
+            </Button>
+
             <Button
               type="button"
               variant="outline"
@@ -195,7 +318,7 @@ export function UploadMidiaConferencia({
               onClick={() => fotoInputRef.current?.click()}
               className="gap-1.5 text-xs font-medium"
             >
-              <Camera className="h-3.5 w-3.5 text-primary" /> Adicionar Fotos
+              <Upload className="h-3.5 w-3.5 text-primary" /> Galeria / Arquivos
             </Button>
             <Button
               type="button"
@@ -205,7 +328,7 @@ export function UploadMidiaConferencia({
               onClick={() => videoInputRef.current?.click()}
               className="gap-1.5 text-xs font-medium"
             >
-              <Video className="h-3.5 w-3.5 text-amber-500" /> Adicionar Vídeo
+              <Video className="h-3.5 w-3.5 text-amber-500" /> Vídeo
             </Button>
           </div>
         )}
@@ -331,6 +454,95 @@ export function UploadMidiaConferencia({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal Câmera ao Vivo para tirar fotos direto no celular ou computador */}
+      {cameraAoVivoAberta && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black">
+          {/* Barra Superior */}
+          <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent text-white z-10">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-sm font-semibold tracking-wide">Câmera ao Vivo</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={alternarCamera}
+                className="text-white hover:bg-white/20 gap-1.5 text-xs font-medium"
+                title="Alternar entre câmera traseira e frontal"
+              >
+                <SwitchCamera className="h-4 w-4" />
+                <span className="hidden sm:inline">Inverter Câmera</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={pararCameraAoVivo}
+                className="text-white hover:bg-white/20 p-2"
+                title="Fechar câmera"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Área do Visor / Viewfinder */}
+          <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
+            <video
+              ref={videoPreviewRef}
+              autoPlay
+              playsInline
+              muted
+              className="h-full w-full object-contain"
+            />
+          </div>
+
+          {/* Barra Inferior com Botão de Disparo */}
+          <div className="flex items-center justify-around p-6 bg-gradient-to-t from-black/90 to-transparent z-10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={pararCameraAoVivo}
+              className="border-white/30 text-white hover:bg-white/10 text-xs"
+            >
+              Cancelar
+            </Button>
+
+            {/* Botão de Disparo Circular */}
+            <button
+              type="button"
+              onClick={tirarFotoNaCamera}
+              className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-white/20 p-1 transition-all active:scale-95 hover:bg-white/30 shadow-2xl focus:outline-none"
+              title="Tirar foto agora"
+            >
+              <div className="h-16 w-16 rounded-full bg-white transition-all active:bg-neutral-200 flex items-center justify-center text-primary">
+                <Camera className="h-7 w-7 text-neutral-900" />
+              </div>
+            </button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                pararCameraAoVivo();
+                cameraDiretaInputRef.current?.click();
+              }}
+              className="text-white/80 hover:bg-white/10 text-xs"
+              title="Abrir aplicativo nativo da câmera do aparelho"
+            >
+              Câmera Nativa
+            </Button>
+          </div>
+
+          {/* Canvas oculto para capturar os pixels do vídeo */}
+          <canvas ref={canvasFotoRef} className="hidden" />
         </div>
       )}
 
