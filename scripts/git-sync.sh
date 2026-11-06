@@ -6,7 +6,7 @@ if [ ! -d ".git" ]; then
   git init -b main
   git config user.name "AI Studio"
   git config user.email "bot@aistudio.google.com"
-  git remote add origin "https://github.com/thmaia1000-ship-it/pixel-perfect-render-7586.git" || true
+  git remote add origin "https://github.com/thmaia1000-ship-it/br3tech.git" || true
 fi
 
 # Se uma URL remota for fornecida como segundo argumento ou variável de ambiente GITHUB_REPO

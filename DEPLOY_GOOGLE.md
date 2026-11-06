@@ -30,7 +30,7 @@ O repositório já contém a pasta `.idx/dev.nix` pré-configurada para o Google
 1. Acesse [Google Project IDX](https://idx.google.com/).
 2. Clique em **"Import a repository"** (Importar um repositório).
 3. Insira a URL do repositório GitHub:
-   `https://github.com/thiagoamaia/pixel-perfect-render-7586.git`
+   `https://github.com/thmaia1000-ship-it/br3tech.git`
 4. O Project IDX detectará automaticamente o arquivo `.idx/dev.nix`, instalará o runtime Bun, as dependências do projeto e iniciará o preview web na porta configurada com live reload.
 
 ---
@@ -42,7 +42,7 @@ O repositório possui o arquivo [`apphosting.yaml`](file:///Users/thiagomaia/.ge
 1. Acesse o [Console do Firebase](https://console.firebase.google.com/).
 2. Crie ou selecione seu projeto.
 3. No menu lateral, acesse **App Hosting**.
-4. Conecte sua conta do GitHub e selecione o repositório `thiagoamaia/pixel-perfect-render-7586`.
+4. Conecte sua conta do GitHub e selecione o repositório `thmaia1000-ship-it/br3tech`.
 5. Em **Root directory**, mantenha `/`.
 6. Configure as variáveis de ambiente necessárias (como `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` e opcionalmente `VITE_GEMINI_API_KEY`).
 7. Clique em **Deploy**. A cada novo push na branch `main`, o Firebase App Hosting fará o deploy automático!
