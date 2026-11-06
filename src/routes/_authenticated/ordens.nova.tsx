@@ -27,6 +27,7 @@ import {
 } from "@/lib/conferencia-aparelho";
 
 export const Route = createFileRoute("/_authenticated/ordens/nova")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Nova ordem de serviço — BR3 Tech" },

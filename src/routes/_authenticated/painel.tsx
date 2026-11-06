@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ABERTAS, moeda, dataCurta, STATUS_LABEL, type OsStatus } from "@/lib/br3";
 
 export const Route = createFileRoute("/_authenticated/painel")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Painel — BR3 Tech" },
@@ -29,18 +30,27 @@ function Painel() {
   const { data, isLoading } = useQuery({
     queryKey: ["painel"],
     queryFn: async () => {
-      const [ordens, pecas] = await Promise.all([
-        supabase
-          .from("ordens_servico")
-          .select(
-            "id, numero, status, prazo, valor_pecas, valor_mao_obra, entregue_em, clientes(nome)",
-          )
-          .order("created_at", { ascending: false }),
-        supabase.from("pecas").select("id, nome, quantidade, quantidade_minima"),
-      ]);
-      if (ordens.error) throw ordens.error;
-      if (pecas.error) throw pecas.error;
-      return { ordens: ordens.data, pecas: pecas.data };
+      try {
+        const [ordens, pecas] = await Promise.all([
+          supabase
+            .from("ordens_servico")
+            .select(
+              "id, numero, status, prazo, valor_pecas, valor_mao_obra, entregue_em, clientes(nome)",
+            )
+            .order("created_at", { ascending: false }),
+          supabase.from("pecas").select("id, nome, quantidade, quantidade_minima"),
+        ]);
+        if (ordens.error) {
+          console.warn("Aviso ao carregar ordens de serviço no painel:", ordens.error);
+        }
+        if (pecas.error) {
+          console.warn("Aviso ao carregar peças no painel:", pecas.error);
+        }
+        return { ordens: ordens.data || [], pecas: pecas.data || [] };
+      } catch (err) {
+        console.error("Falha ao carregar dados do painel:", err);
+        return { ordens: [], pecas: [] };
+      }
     },
   });
 

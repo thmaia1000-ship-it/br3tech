@@ -49,6 +49,7 @@ import {
 } from "@/lib/br3";
 
 export const Route = createFileRoute("/_authenticated/ordens/$id")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Ordem de serviço — BR3 Tech" },

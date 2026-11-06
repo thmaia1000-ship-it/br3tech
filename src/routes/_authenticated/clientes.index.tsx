@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STATUS_LABEL, dataCurta, type OsStatus } from "@/lib/br3";
 
 export const Route = createFileRoute("/_authenticated/clientes/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Clientes — BR3 Tech" },

@@ -44,6 +44,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/_authenticated/ordens/")({
+  ssr: false,
   validateSearch: searchSchema,
   head: () => ({
     meta: [

@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  isRedirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -36,7 +37,16 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
+  if (isRedirect(error)) {
+    if (typeof window !== "undefined") {
+      const destino = error?.options?.to || "/auth";
+      window.location.href = destino;
+      return null;
+    }
+    throw error;
+  }
+
   console.error(error);
   const router = useRouter();
   useEffect(() => {

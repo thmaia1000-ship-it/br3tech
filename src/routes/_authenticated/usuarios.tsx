@@ -38,6 +38,7 @@ import { listarTodasAssinaturas } from "@/lib/assinatura-usuario";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Administração de Usuários — BR3 Tech" },
