@@ -178,7 +178,10 @@ function NovaOS() {
         usuario_nome: user.user?.email ?? null,
       });
 
-      await queryClient.invalidateQueries();
+      // Invalida especificamente as queries necessárias em vez de travar toda a aplicação
+      queryClient.invalidateQueries({ queryKey: ["ordens"] });
+      queryClient.invalidateQueries({ queryKey: ["painel"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
       toast.success(`Ordem ${os.numero} cadastrada com sucesso! Imprima o relatório de entrada.`);
 
       setOsRecemCriada({

@@ -140,7 +140,9 @@ function DetalheOS() {
       });
 
       setObservacao("");
-      await queryClient.invalidateQueries();
+      queryClient.invalidateQueries({ queryKey: ["os", id] });
+      queryClient.invalidateQueries({ queryKey: ["ordens"] });
+      queryClient.invalidateQueries({ queryKey: ["painel"] });
       toast.success(`Situação alterada para ${STATUS_LABEL[novo]}.`);
 
       // Se mudou para aguardando aprovação, abre o modal de envio de link WhatsApp com assinatura na tela
@@ -204,7 +206,7 @@ function DetalheOS() {
       .eq("id", os.id);
 
     if (error) throw error;
-    await queryClient.invalidateQueries();
+    queryClient.invalidateQueries({ queryKey: ["os", id] });
   }
 
   async function salvarMidias(novasMidias: MidiaConferencia[]) {
@@ -224,7 +226,7 @@ function DetalheOS() {
         .eq("id", os.id);
 
       if (error) throw error;
-      await queryClient.invalidateQueries();
+      queryClient.invalidateQueries({ queryKey: ["os", id] });
       toast.success("Evidências fotográficas salvas com sucesso!");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao atualizar fotos da conferência.");
@@ -1079,7 +1081,9 @@ function DetalheOS() {
           clienteNome={os.clientes?.nome}
           aparelhoModelo={modeloAparelho}
           onReabertoSucesso={async () => {
-            await queryClient.invalidateQueries();
+            queryClient.invalidateQueries({ queryKey: ["os", id] });
+            queryClient.invalidateQueries({ queryKey: ["ordens"] });
+            queryClient.invalidateQueries({ queryKey: ["painel"] });
           }}
         />
       )}
@@ -1116,7 +1120,7 @@ function DetalheOS() {
               usuario_id: user.user?.id ?? null,
               usuario_nome: perfil?.nome ?? "Google AI Studio",
             });
-            await queryClient.invalidateQueries();
+            queryClient.invalidateQueries({ queryKey: ["os", id] });
             toast.success("Laudo do Gemini salvo no histórico da OS!");
           } catch {
             // Em caso de falha de gravação de histórico, a observação já foi inserida no textarea

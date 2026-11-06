@@ -317,8 +317,10 @@ function Ordens() {
             {listaFiltrada.map((o) => {
               const status = o.status as OsStatus;
               const ehFechada = STATUS_FECHADOS.includes(status);
-              const { encerramento } = deserializarEstadoEConferencia(o.estado_fisico);
-              const foiReabertaAnteriormente = Boolean(encerramento?.reabertoEm);
+              // Verificação ultrarrápida sem parsing pesado de fotos/base64 em lote
+              const foiReabertaAnteriormente = Boolean(
+                o.estado_fisico && o.estado_fisico.includes('"reabertoEm"')
+              );
 
               return (
                 <li

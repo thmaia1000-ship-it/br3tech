@@ -214,7 +214,9 @@ export function ModalReaberturaOS({
         `✓ Ordem de Serviço #${osNumero} reaberta com sucesso e retornada para ${STATUS_LABEL[novoStatus]}!`,
       );
 
-      await queryClient.invalidateQueries();
+      queryClient.invalidateQueries({ queryKey: ["os", osId] });
+      queryClient.invalidateQueries({ queryKey: ["ordens"] });
+      queryClient.invalidateQueries({ queryKey: ["painel"] });
       onReabertoSucesso?.();
       onFechar();
     } catch (err: any) {
