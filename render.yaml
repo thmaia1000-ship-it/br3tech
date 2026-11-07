@@ -1,6 +1,6 @@
 # render.yaml – Render.com deployment configuration
-# This file tells Render how to build and run the app.
-# It uses the existing Dockerfile in the repository.
+# URL atribuída automaticamente pelo Render: https://br3tech.onrender.com
+# Define o nome do serviço como "br3tech" para gerar o subdomínio br3tech.onrender.com
 
 services:
   - type: web

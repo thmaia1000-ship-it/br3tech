@@ -10,7 +10,8 @@
     "preview": "node start-server.js",
     "start": "node start-server.js",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "render:rename": "bash scripts/update-render-url.sh"
   },
   "overrides": {
     "rolldown": "1.2.1"
