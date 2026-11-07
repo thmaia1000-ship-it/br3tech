@@ -11,7 +11,8 @@
     "start": "node start-server.js",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "render:rename": "bash scripts/update-render-url.sh"
+    "render:rename": "bash scripts/update-render-url.sh",
+    "render:deploy": "curl -X POST 'https://api.render.com/deploy/srv-dbmi5k8m7kps73ffn7b0?key=UUzSRyyzRB8'"
   },
   "overrides": {
     "rolldown": "1.2.1"

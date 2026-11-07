@@ -9,6 +9,7 @@ set -e
 
 NEW_NAME="br3tech"
 TARGET_URL="https://br3tech.onrender.com"
+RENDER_SERVICE_ID="${RENDER_SERVICE_ID:-srv-dbmi5k8m7kps73ffn7b0}"
 
 echo "=========================================================="
 echo "  Atualização de URL do Projeto no Render.com"

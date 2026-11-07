@@ -30,14 +30,25 @@ Se você possui um **Render API Key**:
 
 ```bash
 # Executando via npm script:
-RENDER_API_KEY="seu_token" RENDER_SERVICE_ID="srv-xxxx" npm run render:rename
+RENDER_API_KEY="seu_token" npm run render:rename
 
-# Ou comando direto cURL:
-curl -s -X PATCH "https://api.render.com/v1/services/SEU_SERVICE_ID" \
+# Ou comando direto cURL (Service ID do projeto: srv-dbmi5k8m7kps73ffn7b0):
+curl -s -X PATCH "https://api.render.com/v1/services/srv-dbmi5k8m7kps73ffn7b0" \
   -H "Authorization: Bearer SEU_RENDER_API_KEY" \
   -H "Accept: application/json" \
   -H "Content-Type: application/json" \
   -d '{"name": "br3tech"}'
+```
+
+---
+
+### 🚀 Deploy Hook Automático (Deploy Imediato no Render)
+
+Para disparar um novo deploy imediatamente no Render sem precisar acessar o painel:
+```bash
+npm run render:deploy
+# ou via curl:
+curl -X POST "https://api.render.com/deploy/srv-dbmi5k8m7kps73ffn7b0?key=UUzSRyyzRB8"
 ```
 
 ---
