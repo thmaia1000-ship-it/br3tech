@@ -15,6 +15,9 @@ import {
   X,
   RotateCcw,
   Sparkles,
+  Receipt,
+  CreditCard,
+  Coins,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +31,7 @@ import { ConferenciaEntrada } from "@/components/ConferenciaEntrada";
 import { UploadMidiaConferencia } from "@/components/UploadMidiaConferencia";
 import { TermoGarantiaModal, type ModoDocumentoOS } from "@/components/TermoGarantiaModal";
 import { ModalEncerramentoOS } from "@/components/ModalEncerramentoOS";
+import { ReciboImpressoModal } from "@/components/ReciboImpressoModal";
 import { ModalReaberturaOS } from "@/components/ModalReaberturaOS";
 import { ModalGoogleAIStudio } from "@/components/ModalGoogleAIStudio";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +40,15 @@ import {
   serializarEstadoEConferencia,
   type EncerramentoOS,
   type MidiaConferencia,
+  type PagamentoOS,
+  TIPOS_PAGAMENTO_OS_LABELS,
 } from "@/lib/conferencia-aparelho";
+import {
+  type ReciboAvulso,
+  listarRecibos,
+  converterParaExtenso,
+  FORMAS_PAGAMENTO_LABELS,
+} from "@/lib/recibos";
 import {
   PROXIMOS_STATUS,
   STATUS_CLASS,
@@ -88,6 +100,8 @@ function DetalheOS() {
   const [modalReaberturaAberto, setModalReaberturaAberto] = useState(false);
   const [modalGoogleAIAberto, setModalGoogleAIAberto] = useState(false);
   const [modoDocumento, setModoDocumento] = useState<ModoDocumentoOS>("entrada");
+  const [abaModalEncerramento, setAbaModalEncerramento] = useState<"checklist" | "faturamento">("checklist");
+  const [reciboVisualizar, setReciboVisualizar] = useState<ReciboAvulso | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["os", id],
@@ -210,6 +224,81 @@ function DetalheOS() {
     queryClient.invalidateQueries({ queryKey: ["os", id] });
   }
 
+  async function concluirOSComPagamento(dadosPagamento?: PagamentoOS) {
+    if (!os) return;
+    setSalvando(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("id", user.user?.id ?? "")
+        .maybeSingle();
+
+      const { error } = await supabase
+        .from("ordens_servico")
+        .update({
+          status: "entregue",
+          entregue_em: new Date().toISOString(),
+        })
+        .eq("id", os.id);
+      if (error) throw error;
+
+      let msgObs = "Ordem de serviço concluída e entregue ao cliente.";
+      if (dadosPagamento) {
+        msgObs = `OS concluída com faturamento de ${moeda(dadosPagamento.valorPago)} (${TIPOS_PAGAMENTO_OS_LABELS[dadosPagamento.tipo]}) via ${FORMAS_PAGAMENTO_LABELS[dadosPagamento.forma]}.${dadosPagamento.reciboNumero ? ` Recibo nº ${dadosPagamento.reciboNumero}.` : ""}`;
+      }
+
+      await supabase.from("os_historico").insert({
+        os_id: os.id,
+        status: "entregue",
+        observacao: msgObs,
+        usuario_id: user.user?.id ?? null,
+        usuario_nome: perfil?.nome ?? user.user?.email ?? null,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["os", id] });
+      queryClient.invalidateQueries({ queryKey: ["ordens"] });
+      queryClient.invalidateQueries({ queryKey: ["painel"] });
+      queryClient.invalidateQueries({ queryKey: ["ordens-financeiro-metricas"] });
+      toast.success(`Ordem #${os.numero} finalizada com sucesso!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao concluir ordem de serviço.");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const abrirReciboPeloNumero = (numeroRecibo?: string) => {
+    if (!numeroRecibo || !os) return;
+    const lista = listarRecibos();
+    const encontrado = lista.find((r) => r.numero === numeroRecibo);
+    if (encontrado) {
+      setReciboVisualizar(encontrado);
+    } else {
+      const valorTotal = Number(encerramento?.pagamento?.valorPago ?? total);
+      const reconstruido: ReciboAvulso = {
+        id: encerramento?.pagamento?.reciboId || `rec_${os.id}`,
+        numero: numeroRecibo,
+        clienteNome: nomeCliente,
+        clienteDocumento: os.clientes?.documento || undefined,
+        clienteTelefone: telefone || undefined,
+        clienteId: os.clientes?.id,
+        valor: valorTotal,
+        valorExtenso: converterParaExtenso(valorTotal),
+        referente: `Serviços e peças da OS #${os.numero} (${modeloAparelho})`,
+        formaPagamento: encerramento?.pagamento?.forma || "pix",
+        dataEmissao: encerramento?.pagamento?.dataPagamento || os.entregue_em || new Date().toISOString(),
+        cidade: "Manaus - AM",
+        emitenteNome: os.profiles?.nome || "BR3 Tech",
+        observacoes: encerramento?.pagamento?.observacoes || undefined,
+        modeloImpressao: "duas_vias",
+        criadoEm: encerramento?.pagamento?.dataPagamento || new Date().toISOString(),
+      };
+      setReciboVisualizar(reconstruido);
+    }
+  };
+
   async function salvarMidias(novasMidias: MidiaConferencia[]) {
     if (!os) return;
     try {
@@ -315,6 +404,17 @@ function DetalheOS() {
               >
                 <Printer className="h-4 w-4 text-emerald-400" /> Imprimir OS Finalizada (PDF)
               </Button>
+              {encerramento?.pagamento?.reciboNumero && (
+                <Button
+                  onClick={() => abrirReciboPeloNumero(encerramento.pagamento?.reciboNumero)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 font-bold border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                  title="Visualizar e Imprimir Recibo Oficial de Pagamento"
+                >
+                  <Receipt className="h-4 w-4 text-emerald-400" /> Recibo ({encerramento.pagamento.reciboNumero})
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -602,6 +702,143 @@ function DetalheOS() {
             </dl>
           </section>
 
+          {/* CARD DE FATURAMENTO E PAGAMENTO */}
+          {encerramento?.pagamento ? (
+            <section className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/5 p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-emerald-500" />
+                  <h2 className="text-base font-bold text-foreground">Faturamento & Pagamento da OS</h2>
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                    {TIPOS_PAGAMENTO_OS_LABELS[encerramento.pagamento.tipo]}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAbaModalEncerramento("faturamento");
+                      setModalEncerramentoAberto(true);
+                    }}
+                    className="text-xs h-7 px-2.5 font-medium cursor-pointer"
+                  >
+                    Editar Faturamento
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 rounded-xl border border-border bg-card">
+                  <span className="text-muted-foreground block text-[11px]">Valor Pago:</span>
+                  <span className="text-lg font-bold text-emerald-500">
+                    {moeda(encerramento.pagamento.valorPago)}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-card">
+                  <span className="text-muted-foreground block text-[11px]">Forma de Pagamento:</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {FORMAS_PAGAMENTO_LABELS[encerramento.pagamento.forma]}
+                  </span>
+                  {encerramento.pagamento.parcelas && encerramento.pagamento.parcelas > 1 && (
+                    <span className="text-[10px] text-muted-foreground block">
+                      ({encerramento.pagamento.parcelas}x no cartão)
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-card">
+                  <span className="text-muted-foreground block text-[11px]">Data do Pagamento:</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {dataHora(encerramento.pagamento.dataPagamento)}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-border bg-card">
+                  <span className="text-muted-foreground block text-[11px]">Recibo Oficial:</span>
+                  <span className="text-xs font-mono font-bold text-primary">
+                    {encerramento.pagamento.reciboNumero || "Emitido"}
+                  </span>
+                </div>
+              </div>
+
+              {encerramento.pagamento.desconto && encerramento.pagamento.desconto > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  * Desconto concedido de <strong>{moeda(encerramento.pagamento.desconto)}</strong> sobre o total da OS ({moeda(total)}).
+                </p>
+              ) : null}
+
+              {encerramento.pagamento.reciboNumero && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => abrirReciboPeloNumero(encerramento.pagamento?.reciboNumero)}
+                    className="gap-2 font-bold bg-emerald-600 hover:bg-emerald-500 text-white text-xs shadow-sm cursor-pointer"
+                  >
+                    <Receipt className="h-4 w-4" />
+                    <span>Visualizar / Imprimir Recibo ({encerramento.pagamento.reciboNumero})</span>
+                  </Button>
+
+                  {telefone && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className="gap-1.5 text-xs font-semibold border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
+                    >
+                      <a
+                        href={linkWhatsApp(
+                          telefone,
+                          `*COMPROVANTE DE RECIBO DE PAGAMENTO — BR3 TECH*\n\n` +
+                          `📄 *Recibo:* ${encerramento.pagamento.reciboNumero}\n` +
+                          `👤 *Cliente:* ${nomeCliente}\n` +
+                          `💰 *Valor:* ${moeda(encerramento.pagamento.valorPago)}\n` +
+                          `💳 *Forma:* ${FORMAS_PAGAMENTO_LABELS[encerramento.pagamento.forma]}\n` +
+                          `📝 *Referente a:* Serviços e peças da OS #${os.numero} (${modeloAparelho})\n\n` +
+                          `*BR3 Tech — Manaus/AM*`
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <MessageCircle className="h-4 w-4 text-emerald-400" />
+                        <span>Enviar Recibo no WhatsApp</span>
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </section>
+          ) : (status === "pronta" || status === "em_reparo") ? (
+            <section className="rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <Coins className="h-4 w-4" /> Faturamento e Conclusão da OS
+                </span>
+                <p className="text-xs text-muted-foreground">
+                  Aponte o pagamento e emita o recibo oficial BR3 Tech para concluir a ordem.
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setAbaModalEncerramento("faturamento");
+                  setModalEncerramentoAberto(true);
+                }}
+                className="gap-1.5 font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm cursor-pointer"
+              >
+                <Receipt className="h-4 w-4" />
+                <span>Apontar Pagamento & Concluir</span>
+              </Button>
+            </section>
+          ) : null}
+
           <section className="rounded-2xl border border-border bg-card p-5">
             <h2 className="text-base font-bold">Histórico de atualizações</h2>
             <ul className="mt-4 grid gap-3">
@@ -857,16 +1094,32 @@ function DetalheOS() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    {/* Botão de destaque para Checklist de Saída quando estiver em reparo ou pronta */}
+                    {/* Botões de destaque para Checklist de Saída e Faturamento */}
                     {(status === "em_reparo" || status === "pronta") && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setModalEncerramentoAberto(true)}
-                        className="gap-2 font-bold border-emerald-500/50 text-emerald-500 hover:bg-emerald-500/10"
-                      >
-                        <ClipboardCheck className="h-4 w-4" /> Checklist de Saída & QR Code
-                      </Button>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setAbaModalEncerramento("checklist");
+                            setModalEncerramentoAberto(true);
+                          }}
+                          className="gap-2 font-bold border-emerald-500/50 text-emerald-500 hover:bg-emerald-500/10 text-xs cursor-pointer"
+                        >
+                          <ClipboardCheck className="h-4 w-4" /> Checklist de Saída
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            setAbaModalEncerramento("faturamento");
+                            setModalEncerramentoAberto(true);
+                          }}
+                          className="gap-2 font-bold bg-emerald-600 hover:bg-emerald-500 text-white text-xs shadow-sm cursor-pointer"
+                        >
+                          <Receipt className="h-4 w-4" /> Faturar & Concluir
+                        </Button>
+                      </div>
                     )}
 
                     {PROXIMOS_STATUS[status].map((s) => (
@@ -882,7 +1135,8 @@ function DetalheOS() {
                         disabled={salvando}
                         onClick={() => {
                           if (s === "pronta" || s === "entregue") {
-                            // Abre o modal de checklist de saída para que o técnico possa conferir e concluir
+                            // Abre o modal de encerramento na aba apropriada
+                            setAbaModalEncerramento(s === "entregue" ? "faturamento" : "checklist");
                             setModalEncerramentoAberto(true);
                           } else {
                             mudarStatus(s);
@@ -1048,19 +1302,37 @@ function DetalheOS() {
         aberto={modalEncerramentoAberto}
         onFechar={() => {
           setModalEncerramentoAberto(false);
-          navigate({ to: "/ordens" });
         }}
         osId={os.id}
         osNumero={os.numero}
         aparelhoModelo={modeloAparelho}
+        clienteNome={nomeCliente}
+        clienteDocumento={os.clientes?.documento || undefined}
+        clienteTelefone={telefone || undefined}
+        clienteId={os.clientes?.id}
+        valorPecas={Number(os.valor_pecas || 0)}
+        valorMaoObra={Number(os.valor_mao_obra || 0)}
+        defeitoRelatado={os.defeito_relatado}
+        diagnostico={os.diagnostico || undefined}
         encerramentoAtual={encerramento}
         onSalvarEncerramento={salvarEncerramento}
         podeConcluirOS={status !== "entregue"}
-        onConcluirOS={async () => {
-          await mudarStatus("entregue");
-          navigate({ to: "/ordens" });
+        abaInicial={abaModalEncerramento}
+        onConcluirOS={async (dadosPagamento) => {
+          await concluirOSComPagamento(dadosPagamento);
+        }}
+        onEmitirRecibo={(recibo) => {
+          setReciboVisualizar(recibo);
         }}
       />
+
+      {reciboVisualizar && (
+        <ReciboImpressoModal
+          aberto={!!reciboVisualizar}
+          onFechar={() => setReciboVisualizar(null)}
+          recibo={reciboVisualizar}
+        />
+      )}
 
       <TermoGarantiaModal
         aberto={termoAberto}

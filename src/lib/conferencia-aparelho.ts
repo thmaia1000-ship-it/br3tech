@@ -3,6 +3,8 @@
  * Conforme itens especificados no documento de conferência.
  */
 
+import { type FormaPagamentoRecibo } from "./recibos";
+
 export const ITENS_CONFERENCIA_ENTRADA = [
   "Liga normalmente",
   "Tela sem trincos",
@@ -191,6 +193,30 @@ export interface DiagnosticoExecutado {
   totalReprovados: number;
 }
 
+export type TipoPagamentoOS = "integral" | "parcial" | "sinal" | "cortesia";
+
+export const TIPOS_PAGAMENTO_OS_LABELS: Record<TipoPagamentoOS, string> = {
+  integral: "Pagamento Integral / Quitação",
+  parcial: "Pagamento Parcial",
+  sinal: "Entrada / Sinal",
+  cortesia: "Garantia / Cortesia (R$ 0,00)",
+};
+
+export interface PagamentoOS {
+  tipo: TipoPagamentoOS;
+  forma: FormaPagamentoRecibo;
+  valorTotalOS: number;
+  desconto: number;
+  valorPago: number;
+  parcelas?: number;
+  trocoPara?: number;
+  observacoes?: string;
+  dataPagamento: string;
+  reciboNumero?: string;
+  reciboId?: string;
+  reciboEmitido?: boolean;
+}
+
 export interface EncerramentoOS {
   checklistSaida: ConferenciaChecklist;
   diagnosticoHardware?: DiagnosticoExecutado | null;
@@ -200,6 +226,7 @@ export interface EncerramentoOS {
   reabertoEm?: string;
   reabertoPor?: string;
   motivoReabertura?: string;
+  pagamento?: PagamentoOS | null;
 }
 
 export interface MidiaConferencia {
