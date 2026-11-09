@@ -1,21 +1,55 @@
 {
-  "id": "/",
-  "name": "BR3 Tech — Laboratório de Tecnologia",
+  "id": "br3tech-app",
+  "name": "BR3 Tech — Laboratório e Gestão de Assistência Técnica",
   "short_name": "BR3 Tech",
-  "description": "Sistema de gestão e ordens de serviço do laboratório BR3 Tech.",
-  "start_url": "/",
+  "description": "Sistema completo de gestão de ordens de serviço, diagnósticos de hardware, checklist e laboratório de tecnologia da BR3 Tech.",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#090d16",
   "theme_color": "#090d16",
   "lang": "pt-BR",
   "dir": "ltr",
   "categories": ["business", "productivity", "utilities"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "auto"
+  },
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
   "icons": [
+    {
+      "src": "/pwa-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/pwa-192x192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-256x256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-384x384.png",
+      "sizes": "384x384",
       "type": "image/png",
       "purpose": "any"
     },
@@ -30,6 +64,63 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/screenshot-desktop-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Painel de Gestão e Ordens de Serviço no Computador"
+    },
+    {
+      "src": "/screenshots/screenshot-mobile-narrow.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Checklist, Fotos e Diagnóstico no Celular"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nova Ordem de Serviço",
+      "short_name": "Nova OS",
+      "description": "Cadastrar nova ordem de serviço rapidamente",
+      "url": "/ordens/nova",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Painel de Controle",
+      "short_name": "Painel",
+      "description": "Acessar métricas e visão geral da assistência",
+      "url": "/painel",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Consultar Ordens",
+      "short_name": "Ordens",
+      "description": "Ver lista de ordens de serviço ativas",
+      "url": "/ordens",
+      "icons": [
+        {
+          "src": "/pwa-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

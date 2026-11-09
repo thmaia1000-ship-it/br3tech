@@ -101,9 +101,15 @@ export function ModalDownloads({
     }
   }
 
-  if (!open) return null;
+  const productionUrl = "https://br3tech.onrender.com";
+  const currentUrl =
+    typeof window !== "undefined" && window.location.origin.startsWith("http")
+      ? window.location.origin.includes("localhost")
+        ? productionUrl
+        : window.location.origin
+      : productionUrl;
 
-  const currentUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const pwabuilderUrl = `https://www.pwabuilder.com/?site=${encodeURIComponent(currentUrl)}`;
 
   return (
     <div
@@ -256,17 +262,17 @@ export function ModalDownloads({
                     className="w-full gap-2 font-bold text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
                   >
                     <a
-                      href="https://www.pwabuilder.com"
+                      href={pwabuilderUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <Download className="h-4 w-4" />
-                      <span>Gerar Pacote .APK Atualizado</span>
+                      <span>Compilar .APK no PWABuilder</span>
                       <ExternalLink className="h-3 w-3 ml-auto opacity-70" />
                     </a>
                   </Button>
                   <p className="text-[10px] text-muted-foreground text-center font-mono truncate">
-                    URL: {currentUrl}
+                    1-Click PWABuilder: {currentUrl}
                   </p>
                 </div>
               </div>
@@ -341,17 +347,17 @@ export function ModalDownloads({
                     className="w-full gap-2 font-bold text-xs border-sky-500/40 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 cursor-pointer"
                   >
                     <a
-                      href="https://www.pwabuilder.com"
+                      href={pwabuilderUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <Download className="h-4 w-4" />
-                      <span>Gerar Instalador Windows (.exe)</span>
+                      <span>Compilar .EXE no PWABuilder</span>
                       <ExternalLink className="h-3 w-3 ml-auto opacity-70" />
                     </a>
                   </Button>
                   <p className="text-[10px] text-muted-foreground text-center font-mono truncate">
-                    Microsoft PWABuilder Windows SDK
+                    1-Click PWABuilder: {currentUrl}
                   </p>
                 </div>
               </div>
@@ -370,6 +376,29 @@ export function ModalDownloads({
             </div>
           </div>
         )}
+
+        {/* Banner PWABuilder 100% Ready */}
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-foreground text-xs">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span>Compatibilidade Total com PWABuilder (Android APK & Windows EXE)</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Manifesto completo com ícones PNG em alta resolução, screenshots mobile & desktop e Service Worker com modo offline ativo.
+            </p>
+          </div>
+          <Button
+            asChild
+            size="sm"
+            className="gap-1.5 font-semibold text-xs whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+          >
+            <a href={pwabuilderUrl} target="_blank" rel="noopener noreferrer">
+              <span>Abrir no PWABuilder</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </Button>
+        </div>
 
         {/* Rodapé */}
         <div className="flex items-center justify-between pt-2 border-t border-border text-xs">
