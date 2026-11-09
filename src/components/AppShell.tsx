@@ -9,12 +9,13 @@ import {
   Menu,
   Smartphone,
   Banknote,
+  Download,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { InstallAppModal } from "@/components/InstallAppModal";
+import { ModalDownloads } from "@/components/ModalDownloads";
 import { supabase } from "@/integrations/supabase/client";
 
 const NAV = [
@@ -37,7 +38,7 @@ export function AppShell({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [aberto, setAberto] = useState(false);
-  const [modalAppAberto, setModalAppAberto] = useState(false);
+  const [modalDownloadsAberto, setModalDownloadsAberto] = useState(false);
 
   async function sair() {
     await queryClient.cancelQueries();
@@ -72,12 +73,12 @@ export function AppShell({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setModalAppAberto(true)}
-              className="gap-1.5 text-xs text-primary border-primary/40 hover:bg-primary/10 shadow-sm"
-              title="Instalar aplicativo Android ou gerar APK"
+              onClick={() => setModalDownloadsAberto(true)}
+              className="gap-1.5 text-xs text-primary border-primary/40 hover:bg-primary/10 shadow-sm cursor-pointer"
+              title="Central de Downloads — Aplicativos para Android e Windows"
             >
-              <Smartphone className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">App Android</span>
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Downloads</span>
             </Button>
 
             <Button variant="ghost" size="icon" onClick={sair} aria-label="Sair">
@@ -112,12 +113,12 @@ export function AppShell({
               type="button"
               onClick={() => {
                 setAberto(false);
-                setModalAppAberto(true);
+                setModalDownloadsAberto(true);
               }}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer"
             >
-              <Smartphone className="h-4 w-4 shrink-0" />
-              Instalar App Android (APK)
+              <Download className="h-4 w-4 shrink-0" />
+              Downloads (Android & Windows)
             </button>
           </nav>
         )}
@@ -131,7 +132,7 @@ export function AppShell({
         {children}
       </main>
 
-      <InstallAppModal open={modalAppAberto} onClose={() => setModalAppAberto(false)} />
+      <ModalDownloads open={modalDownloadsAberto} onClose={() => setModalDownloadsAberto(false)} />
     </div>
   );
 }

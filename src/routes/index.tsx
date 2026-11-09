@@ -13,12 +13,13 @@ import {
   Eye,
   Film,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { InstallAppModal } from "@/components/InstallAppModal";
+import { ModalDownloads } from "@/components/ModalDownloads";
 import {
   Dialog,
   DialogContent,
@@ -197,9 +198,10 @@ function Entrada() {
               size="sm"
               onClick={() => setModalAppAberto(true)}
               className="gap-1.5 text-xs text-primary border-primary/40 hover:bg-primary/10"
+              title="Downloads para Android e Windows"
             >
-              <Smartphone className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">App Android</span>
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Downloads</span>
             </Button>
 
             <Button asChild size="sm" className="shadow-lg shadow-primary/20 font-semibold">
@@ -564,7 +566,7 @@ function Entrada() {
         </div>
       </footer>
 
-      <InstallAppModal open={modalAppAberto} onClose={() => setModalAppAberto(false)} />
+      <ModalDownloads open={modalAppAberto} onClose={() => setModalAppAberto(false)} />
     </div>
   );
 }
