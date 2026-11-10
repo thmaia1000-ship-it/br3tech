@@ -1,6 +1,6 @@
 // BR3 Tech Progressive Web App Service Worker
 // Fully compliant with PWABuilder & Google Lighthouse standards
-const CACHE_NAME = "br3-tech-v3";
+const CACHE_NAME = "br3-tech-v4";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_ASSETS = [
@@ -13,10 +13,16 @@ const PRECACHE_ASSETS = [
   "/pwa-96x96.png",
   "/pwa-144x144.png",
   "/pwa-192x192.png",
+  "/pwa-maskable-192x192.png",
   "/pwa-256x256.png",
   "/pwa-384x384.png",
   "/pwa-512x512.png",
   "/pwa-maskable-512x512.png",
+  "/windows/Square44x44Logo.png",
+  "/windows/Square50x50Logo.png",
+  "/windows/Square150x150Logo.png",
+  "/windows/Wide310x150Logo.png",
+  "/windows/Square310x310Logo.png",
   "/screenshots/screenshot-desktop-wide.png",
   "/screenshots/screenshot-mobile-narrow.png",
 ];
