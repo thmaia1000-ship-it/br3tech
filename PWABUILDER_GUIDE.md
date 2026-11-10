@@ -36,9 +36,13 @@ O projeto está **100% auditado e aprovado** pelos padrões do PWABuilder e Goog
 
 ## 2. Como gerar o aplicativo Android (.APK)
 
+> ⚠️ **Atenção sobre a URL**: O sistema oficial está hospedado no Render sob o endereço ativo:
+> **`https://pixel-perfect-render-7586-1.onrender.com`** (ou `https://br3tech.onrender.com` caso já tenha renomeado o serviço no Render).
+> **Nunca utilize domínios antigos `.vercel.app`**, pois retornam o erro `404 DEPLOYMENT_NOT_FOUND (gru1::...)` visto que o projeto não roda na Vercel.
+
 1. Acesse o PWABuilder com o link direto pré-configurado:
-   👉 **[https://www.pwabuilder.com/?site=https%3A%2F%2Fbr3tech.onrender.com](https://www.pwabuilder.com/?site=https%3A%2F%2Fbr3tech.onrender.com)**
-2. Aguarde a análise (o score de manifesto, service worker e segurança ficará verde/máximo).
+   👉 **[https://www.pwabuilder.com/?site=https%3A%2F%2Fpixel-perfect-render-7586-1.onrender.com](https://www.pwabuilder.com/?site=https%3A%2F%2Fpixel-perfect-render-7586-1.onrender.com)**
+2. Aguarde a análise (todos os scores de Manifesto, Service Worker e Segurança ficarão verdes).
 3. Clique no botão **"Package for Stores"** ou **"Next"**.
 4. Selecione a plataforma **Android**:
    - Clique em **"Generate Package"** (ou **"Package Options"** se desejar personalizar o Package ID, ex: `com.br3tech.app`).

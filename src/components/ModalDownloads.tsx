@@ -101,13 +101,14 @@ export function ModalDownloads({
     }
   }
 
-  const productionUrl = "https://br3tech.onrender.com";
+  // URL oficial ativa e funcional no Render.com
+  const liveRenderUrl = "https://pixel-perfect-render-7586-1.onrender.com";
   const currentUrl =
     typeof window !== "undefined" && window.location.origin.startsWith("http")
       ? window.location.origin.includes("localhost")
-        ? productionUrl
+        ? liveRenderUrl
         : window.location.origin
-      : productionUrl;
+      : liveRenderUrl;
 
   const pwabuilderUrl = `https://www.pwabuilder.com/?site=${encodeURIComponent(currentUrl)}`;
 
@@ -385,7 +386,7 @@ export function ModalDownloads({
               <span>Compatibilidade Total com PWABuilder (Android APK & Windows EXE)</span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Manifesto completo com ícones PNG em alta resolução, screenshots mobile & desktop e Service Worker com modo offline ativo.
+              URL oficial no Render: <code className="text-primary font-mono select-all bg-primary/10 px-1 py-0.5 rounded">{currentUrl}</code> (não utilize domínios antigos .vercel.app).
             </p>
           </div>
           <Button
