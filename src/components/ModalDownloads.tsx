@@ -18,6 +18,7 @@ import {
   Wrench,
   Users,
   ArrowRight,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -39,12 +40,25 @@ export function ModalDownloads({
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState<"todos" | "android" | "windows">(abaInicial);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     if (open) {
       setAbaAtiva(abaInicial);
     }
   }, [open, abaInicial]);
+
+  // Fecha o modal ao pressionar Escape
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -119,9 +133,24 @@ export function ModalDownloads({
 
   const pwabuilderUrl = `https://www.pwabuilder.com/?site=${encodeURIComponent(currentUrl)}`;
 
+  function copiarUrl() {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(currentUrl);
+      setCopiado(true);
+      toast.success("URL oficial copiada para a área de transferência!");
+      setTimeout(() => setCopiado(false), 2000);
+    }
+  }
+
+  // IMPORTANTE: Nunca renderiza nada no DOM caso o modal não esteja aberto
+  if (!open) return null;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-md animate-in fade-in cursor-pointer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-downloads-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-md animate-in fade-in"
       onClick={onClose}
     >
       <div
@@ -136,7 +165,7 @@ export function ModalDownloads({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-foreground">
+                <h3 id="modal-downloads-title" className="text-base sm:text-lg font-bold text-foreground">
                   Central de Downloads — BR3 Tech
                 </h3>
                 <span className="text-[10px] uppercase font-mono font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
@@ -387,19 +416,31 @@ export function ModalDownloads({
 
         {/* Banner PWABuilder 100% Ready */}
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1 min-w-0">
             <div className="flex items-center gap-1.5 font-bold text-foreground text-xs">
               <Sparkles className="h-4 w-4 text-primary" />
               <span>Compatibilidade Total com PWABuilder (Android APK & Windows EXE)</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              URL oficial no Render: <code className="text-primary font-mono select-all bg-primary/10 px-1 py-0.5 rounded">{currentUrl}</code> (não utilize domínios antigos .vercel.app).
+            <p className="text-[11px] text-muted-foreground flex flex-wrap items-center gap-1.5">
+              <span>URL oficial no Render:</span>
+              <code className="text-primary font-mono select-all bg-primary/10 px-1.5 py-0.5 rounded font-semibold break-all">
+                {currentUrl}
+              </code>
+              <button
+                type="button"
+                onClick={copiarUrl}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-colors cursor-pointer"
+                title="Copiar URL para a área de transferência"
+              >
+                {copiado ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                <span>{copiado ? "Copiado!" : "Copiar"}</span>
+              </button>
             </p>
           </div>
           <Button
             asChild
             size="sm"
-            className="gap-1.5 font-semibold text-xs whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="gap-1.5 font-semibold text-xs whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer shrink-0"
           >
             <a href={pwabuilderUrl} target="_blank" rel="noopener noreferrer">
               <span>Abrir no PWABuilder</span>
