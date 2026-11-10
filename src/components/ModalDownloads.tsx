@@ -160,51 +160,6 @@ export function ModalDownloads({
           </button>
         </div>
 
-        {/* Atalhos Rápidos para os Menus do Sistema */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary/80 border border-border p-2.5 sm:p-3 text-xs">
-          <div className="flex items-center gap-1.5 font-bold text-foreground text-xs">
-            <LayoutDashboard className="h-4 w-4 text-primary" />
-            <span>Navegar no Sistema:</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Button
-              asChild
-              size="sm"
-              className="h-7 text-xs font-bold gap-1 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-              onClick={onClose}
-            >
-              <Link to="/painel">
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>Painel</span>
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs font-semibold gap-1 bg-card hover:bg-secondary"
-              onClick={onClose}
-            >
-              <Link to="/ordens">
-                <Wrench className="h-3.5 w-3.5 text-primary" />
-                <span>Ordens de Serviço</span>
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs font-semibold gap-1 bg-card hover:bg-secondary"
-              onClick={onClose}
-            >
-              <Link to="/clientes">
-                <Users className="h-3.5 w-3.5 text-primary" />
-                <span>Clientes</span>
-              </Link>
-            </Button>
-          </div>
-        </div>
-
         {/* Abas de Plataforma */}
         <div className="flex border-b border-border/80 gap-2">
           <button

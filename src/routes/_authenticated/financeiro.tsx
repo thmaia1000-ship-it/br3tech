@@ -52,17 +52,6 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/_authenticated/financeiro")({
   ssr: false,
   validateSearch: searchSchema,
-  beforeLoad: async () => {
-    if (typeof window === "undefined") {
-      return { user: null };
-    }
-    // Revalida a sessão com o provedor de autenticação conforme regras de arquitetura
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data?.user) {
-      throw redirect({ to: "/auth" });
-    }
-    return { user: data.user };
-  },
   head: () => ({
     meta: [
       { title: "Financeiro & Recibos — BR3 Tech" },

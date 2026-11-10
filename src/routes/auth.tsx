@@ -18,6 +18,12 @@ export const Route = createFileRoute("/auth")({
     };
   },
   beforeLoad: async ({ search }) => {
+    if (typeof window === "undefined") return;
+    const { data: sess } = await supabase.auth.getSession();
+    if (sess?.session?.user) {
+      const destino = (search as any)?.returnTo || "/painel";
+      throw redirect({ to: destino });
+    }
     const { data, error } = await supabase.auth.getUser();
     if (!error && data.user) {
       const destino = (search as any)?.returnTo || "/painel";
@@ -102,7 +108,16 @@ function Acesso() {
       }
       toast.success("Bem-vindo de volta!");
       const destino = (search as { returnTo?: string })?.returnTo || "/painel";
-      await navigate({ to: destino as any, replace: true });
+      try {
+        await navigate({ to: destino as any, replace: true });
+      } catch {
+        window.location.replace(destino);
+      }
+      setTimeout(() => {
+        if (window.location.pathname === "/auth") {
+          window.location.replace(destino);
+        }
+      }, 150);
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Não foi possível concluir. Tente novamente.";

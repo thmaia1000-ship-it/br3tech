@@ -1,10 +1,12 @@
 // BR3 Tech Progressive Web App Service Worker
 // Fully compliant with PWABuilder & Google Lighthouse standards
-const CACHE_NAME = "br3-tech-v4";
+const CACHE_NAME = "br3-tech-v5";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE_ASSETS = [
   "/",
+  "/auth",
+  "/painel",
   "/offline.html",
   "/manifest.webmanifest",
   "/manifest.json",

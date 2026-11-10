@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   ClipboardList,
   Smartphone,
@@ -36,6 +36,16 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return;
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.user) {
+      throw redirect({ to: "/painel" });
+    } else {
+      throw redirect({ to: "/auth" });
+    }
+  },
   head: () => ({
     meta: [
       { title: "BR3 Tech — Laboratório de Tecnologia Especializado" },
@@ -166,22 +176,25 @@ function Entrada() {
     supabase.auth.getSession().then(({ data }) => {
       const logado = !!data.session?.user;
       setEstaLogado(logado);
-
-      // Redirecionamento automático quando executando no app instalado
       if (typeof window !== "undefined") {
-        const isStandalone =
-          window.matchMedia("(display-mode: standalone)").matches ||
-          (window.navigator as unknown as { standalone?: boolean }).standalone ||
-          window.location.search.includes("source=pwa");
-
-        if (isStandalone) {
+        if (logado) {
           window.location.replace("/painel");
+        } else {
+          window.location.replace("/auth");
         }
       }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setEstaLogado(!!session?.user);
+      const logado = !!session?.user;
+      setEstaLogado(logado);
+      if (typeof window !== "undefined") {
+        if (logado) {
+          window.location.replace("/painel");
+        } else {
+          window.location.replace("/auth");
+        }
+      }
     });
 
     return () => {
