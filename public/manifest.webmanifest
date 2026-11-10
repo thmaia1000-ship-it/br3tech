@@ -1,9 +1,9 @@
 {
-  "id": "/?source=pwa",
+  "id": "/painel",
   "name": "BR3 Tech — Laboratório e Gestão de Assistência Técnica",
   "short_name": "BR3 Tech",
   "description": "Sistema completo de gestão de ordens de serviço, diagnósticos de hardware, checklist e laboratório de tecnologia da BR3 Tech.",
-  "start_url": "/?source=pwa",
+  "start_url": "/painel",
   "scope": "/",
   "display": "standalone",
   "display_override": [

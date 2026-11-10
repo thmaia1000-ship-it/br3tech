@@ -14,6 +14,12 @@ import {
   Film,
   ExternalLink,
   Download,
+  LayoutDashboard,
+  Wrench,
+  Users,
+  Banknote,
+  Menu,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -142,14 +148,36 @@ const RECURSOS = [
   },
 ];
 
+const MENUS_SISTEMA = [
+  { to: "/painel", label: "Painel", icon: LayoutDashboard },
+  { to: "/ordens", label: "Ordens de serviço", icon: Wrench },
+  { to: "/clientes", label: "Clientes", icon: Users },
+  { to: "/financeiro", label: "Financeiro", icon: Banknote },
+  { to: "/usuarios", label: "Administração", icon: ShieldCheck },
+] as const;
+
 function Entrada() {
   const [estaLogado, setEstaLogado] = useState(false);
   const [modalAppAberto, setModalAppAberto] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
   const [videoSelecionado, setVideoSelecionado] = useState<VideoDemonstrativo | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      setEstaLogado(!!data.session?.user);
+      const logado = !!data.session?.user;
+      setEstaLogado(logado);
+
+      // Redirecionamento automático quando executando no app instalado
+      if (typeof window !== "undefined") {
+        const isStandalone =
+          window.matchMedia("(display-mode: standalone)").matches ||
+          (window.navigator as unknown as { standalone?: boolean }).standalone ||
+          window.location.search.includes("source=pwa");
+
+        if (isStandalone) {
+          window.location.replace("/painel");
+        }
+      }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -166,9 +194,23 @@ function Entrada() {
       {/* HEADER */}
       <header className="border-b border-border/60 bg-card/75 backdrop-blur-xl sticky top-0 z-40">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5">
-          <Logo />
+          <div className="flex items-center gap-6">
+            <Logo />
+            {/* Menus principais na barra superior no desktop */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {MENUS_SISTEMA.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Redes Sociais no topo */}
             <div className="hidden sm:flex items-center gap-1.5 border-r border-border/60 pr-3 mr-1">
               <a
@@ -209,8 +251,52 @@ function Entrada() {
                 {estaLogado ? "Acessar o Painel" : "Entrar no sistema"}
               </Link>
             </Button>
+
+            {/* Botão de Menu Mobile */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMenuAberto((v) => !v)}
+              aria-label="Menu de Navegação"
+            >
+              {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
+
+        {/* Menu Dropdown Mobile */}
+        {menuAberto && (
+          <nav className="grid gap-1 border-t border-border/60 bg-card/95 backdrop-blur-2xl px-4 py-3 lg:hidden shadow-xl animate-in slide-in-from-top-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-2 py-1">
+              Menus do Sistema
+            </span>
+            {MENUS_SISTEMA.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setMenuAberto(false)}
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+              >
+                <item.icon className="h-4 w-4 text-primary shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            ))}
+            <div className="border-t border-border/60 my-1 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAberto(false);
+                  setModalAppAberto(true);
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                <span>Central de Downloads (Android & Windows)</span>
+              </button>
+            </div>
+          </nav>
+        )}
       </header>
 
       {/* HERO SECTION */}
