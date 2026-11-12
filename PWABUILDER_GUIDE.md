@@ -1,75 +1,31 @@
-# Guia de Compilação PWABuilder — BR3 Tech (.APK e .EXE)
+# Android APK — BR3 Tech
 
-Este guia orienta o processo de empacotamento e compilação do projeto **BR3 Tech** utilizando o **[PWABuilder](https://www.pwabuilder.com)** (ferramenta oficial da Microsoft mantida para gerar binários para Google Play, Android Sideload e Windows).
+O BR3 Tech é um app web em TypeScript/React com renderização no servidor (TanStack Start) e PWA. O APK deve abrir o site publicado como uma **Trusted Web Activity (TWA)**. Assim, as telas, autenticação Supabase e recursos do servidor continuam usando a versão publicada; o APK não é uma cópia offline/autônoma do backend.
 
----
+O endereço de produção documentado pelo projeto, `https://pixel-perfect-render-7586-1.onrender.com`, respondeu com HTTP 200 em 11/11/2026. O manifesto disponível é `/manifest.webmanifest`, com identidade BR3 Tech, ícones Android, `display: standalone` e início em `/auth`. O projeto também inclui service worker e metadados de viewport para celulares. Não há projeto Android nativo no repositório.
 
-## 1. O que foi preparado e otimizado no projeto
+## Gerar o APK pelo terminal
 
-O projeto está **100% auditado e aprovado** pelos padrões do PWABuilder e Google Lighthouse:
+Pré-requisitos: Node.js, JDK 17 e Android SDK Command-line Tools. Os comandos usam Bubblewrap, que cria um projeto Android TWA a partir do manifesto publicado. Execute na raiz do repositório:
 
-1. **Manifesto Web App (`manifest.json` e `manifest.webmanifest`)**:
-   - `id`: `br3tech-app`
-   - `name`: `BR3 Tech — Laboratório e Gestão de Assistência Técnica`
-   - `short_name`: `BR3 Tech`
-   - `start_url`: `/?source=pwa`
-   - `scope`: `/`
-   - `display`: `standalone`
-   - `display_override`: `["window-controls-overlay", "standalone", "minimal-ui"]`
-   - `theme_color` e `background_color`: `#090d16`
-   - `shortcuts`: Atalhos rápidos para *Nova OS*, *Painel* e *Consultar Ordens*.
+```sh
+npm run android:validate
+npm run android:init
+npm run android:build
+```
 
-2. **Ícones PNG Nativos em Alta Resolução**:
-   - `96x96`, `144x144`, `192x192`, `256x256`, `384x384`, `512x512` (propósito `any`)
-   - `512x512` (propósito `maskable` para adaptação aos círculos/quadrados do Android)
-   - `apple-touch-icon.png` (180x180) para iOS
+Na primeira execução de `android:init`, confirme os valores sugeridos e gere uma chave de assinatura. A configuração gerada requer Android 7.0 (API 24) ou superior por causa da versão atual do Android Browser Helper. O app não usa Google Play Billing, então essa dependência opcional é desativada automaticamente. Guarde com segurança o arquivo de chave e as senhas: futuras versões instaláveis por cima da atual precisam da mesma chave. Não envie a chave privada ao GitHub.
 
-3. **Screenshots Obrigatórias para Lojas e Construtor**:
-   - `screenshot-desktop-wide.png`: 1280x720 (`form_factor: "wide"`) para telas de PC e Windows Store.
-   - `screenshot-mobile-narrow.png`: 720x1280 (`form_factor: "narrow"`) para celulares Android e Play Store.
+O build roda dentro da pasta `android-twa`, onde fica o `gradlew`, e pula a consulta ao PageSpeed Insights. O APK assinado é gerado como `android-twa/app-release-signed.apk`. Para instalar diretamente, copie o APK para o Android e permita a instalação pelo gerenciador de arquivos. Para testar por USB com depuração habilitada, entre em `android-twa` e rode `npx @bubblewrap/cli install --apkFile=app-release-signed.apk`.
 
-4. **Service Worker v3 com Modo Offline**:
-   - `public/sw.js` com interceptação de requisições de navegação e cache inteligente.
-   - Página de contingência `offline.html` carregada automaticamente se o dispositivo perder o sinal de internet.
+## Tela cheia confiável e domínio
 
----
+Uma TWA precisa confirmar que o app Android e o domínio do site pertencem ao mesmo responsável. O arquivo `public/.well-known/assetlinks.json` contém essa associação para o pacote e a chave usados no APK assinado atual. Ele é publicado no domínio como `/.well-known/assetlinks.json`. Sem essa associação, o Chrome pode abrir a página em uma aba personalizada e exibir a barra de endereço.
 
-## 2. Como gerar o aplicativo Android (.APK)
+Se a chave de assinatura for substituída, atualize também a impressão SHA-256 em `assetlinks.json`. Para publicar pela Google Play, inclua a impressão do certificado de assinatura do app fornecida pelo Play Console, que pode diferir da chave local.
 
-> ⚠️ **Atenção sobre a URL**: O sistema oficial está hospedado no Render sob o endereço ativo:
-> **`https://pixel-perfect-render-7586-1.onrender.com`** (ou `https://br3tech.onrender.com` caso já tenha renomeado o serviço no Render).
-> **Nunca utilize domínios antigos `.vercel.app`**, pois retornam o erro `404 DEPLOYMENT_NOT_FOUND (gru1::...)` visto que o projeto não roda na Vercel.
+O endereço do servidor é um parâmetro de build em `package.json`. Se o domínio de produção mudar, atualize os três comandos `android:*` antes de gerar outro pacote. O APK depende de conexão com o serviço hospedado para carregar o sistema e seus dados.
 
-1. Acesse o PWABuilder com o link direto pré-configurado:
-   👉 **[https://www.pwabuilder.com/?site=https%3A%2F%2Fpixel-perfect-render-7586-1.onrender.com](https://www.pwabuilder.com/?site=https%3A%2F%2Fpixel-perfect-render-7586-1.onrender.com)**
-2. Aguarde a análise (todos os scores de Manifesto, Service Worker e Segurança ficarão verdes).
-3. Clique no botão **"Package for Stores"** ou **"Next"**.
-4. Selecione a plataforma **Android**:
-   - Clique em **"Generate Package"** (ou **"Package Options"** se desejar personalizar o Package ID, ex: `com.br3tech.app`).
-   - Se for gerar apenas o APK para distribuição direta / bancada / WhatsApp:
-     - Marque a opção de gerar **APK (Sideload / Testing)**.
-     - O PWABuilder gerará um arquivo `.zip` contendo o instalador `.apk` pronto para instalar em qualquer Android!
-   - Se for publicar na Google Play Store:
-     - Preencha o Keystore e gere o arquivo `.aab` (Android App Bundle).
+## Alternativa visual
 
----
-
-## 3. Como gerar o aplicativo Windows (.EXE / .MSIX)
-
-1. No mesmo painel do PWABuilder (**"Package for Stores"**):
-2. Selecione a plataforma **Windows**:
-   - Clique em **"Generate Package"**.
-   - O PWABuilder irá gerar o instalador do Windows (pacote `.msix` / `.exe` com instalador automático).
-   - O pacote gerado permite:
-     - Instalação no Windows 10 e Windows 11 com 1 clique;
-     - Ícone próprio na barra de tarefas e no Menu Iniciar;
-     - Janela independente sem molduras de navegador (`window-controls-overlay`);
-     - Acesso direto a impressoras térmicas (recibos e ordens).
-
----
-
-## 4. Teste Direto no Navegador
-
-Tanto no celular quanto no PC, os usuários e técnicos podem instalar instantaneamente sem precisar do instalador tradicional:
-- **No celular (Android)**: Abra `https://br3tech.onrender.com` no Chrome, toque no menu **(⋮)** e escolha **"Instalar aplicativo"**.
-- **No PC (Windows)**: Abra no Edge ou Chrome e clique no ícone de computador/instalação na barra de endereço ou pelo menu **Downloads** no topo da página.
+O [PWABuilder](https://www.pwabuilder.com/) também pode empacotar o mesmo endereço e manifesto. Use a opção Android para gerar um APK de teste ou um AAB para publicação na Play Store. A publicação na loja também requer a chave de assinatura e a associação Digital Asset Links descrita acima.

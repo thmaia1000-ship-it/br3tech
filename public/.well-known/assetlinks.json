@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.onrender.pixel_perfect_render_7586_1.twa",
+      "sha256_cert_fingerprints": [
+        "FC:DC:FD:29:20:39:22:05:F8:A8:7F:F3:97:AB:50:1C:C5:67:50:75:F1:BA:92:9F:EF:77:4D:90:F9:13:4D:CD"
+      ]
+    }
+  }
+]
