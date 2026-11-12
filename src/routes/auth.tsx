@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { Clock, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -9,26 +9,47 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  consumirMotivoInatividade,
+  desconectarSeSessaoExpirou,
+  limparMotivoInatividade,
+  obterUltimaInteracao,
+  registrarInteracao,
+} from "@/lib/inatividade";
+
+const authSearchSchema = z.object({
+  returnTo: z.string().optional().catch(undefined),
+  motivo: z.enum(["inatividade"]).optional().catch(undefined),
+});
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      returnTo: typeof search["returnTo"] === "string" ? (search["returnTo"] as string) : undefined,
-    };
-  },
+  validateSearch: authSearchSchema,
   beforeLoad: async ({ search }) => {
     if (typeof window === "undefined") return;
+
     const { data: sess } = await supabase.auth.getSession();
-    if (sess?.session?.user) {
-      const destino = (search as any)?.returnTo || "/painel";
-      throw redirect({ to: destino });
+    let user = sess?.session?.user ?? null;
+
+    if (!user) {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data.user) {
+        user = data.user;
+      }
     }
-    const { data, error } = await supabase.auth.getUser();
-    if (!error && data.user) {
-      const destino = (search as any)?.returnTo || "/painel";
-      throw redirect({ to: destino });
+
+    if (!user) return;
+
+    if (await desconectarSeSessaoExpirou()) {
+      return;
     }
+
+    if (obterUltimaInteracao() === null) {
+      registrarInteracao(true);
+    }
+
+    const destino = (search as any)?.returnTo || "/painel";
+    throw redirect({ to: destino });
   },
   head: () => ({
     meta: [
@@ -55,6 +76,16 @@ function Acesso() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [expirouPorInatividade, setExpirouPorInatividade] = useState(
+    () => search.motivo === "inatividade",
+  );
+
+  useEffect(() => {
+    const motivoConsumido = consumirMotivoInatividade();
+    if (motivoConsumido || search.motivo === "inatividade") {
+      setExpirouPorInatividade(true);
+    }
+  }, [search.motivo]);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -106,6 +137,9 @@ function Acesso() {
         setErro("Não foi possível iniciar sua sessão. Tente entrar novamente.");
         return;
       }
+
+      limparMotivoInatividade();
+      registrarInteracao(true);
       toast.success("Bem-vindo de volta!");
       const destino = (search as { returnTo?: string })?.returnTo || "/painel";
       try {
@@ -155,6 +189,19 @@ function Acesso() {
                 : "Área restrita à equipe da BR3 Tech."}
             </p>
           </div>
+
+          {expirouPorInatividade && modo === "login" && (
+            <div
+              role="alert"
+              className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200"
+            >
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <p className="leading-relaxed">
+                Sessão encerrada após <strong>30 minutos sem interação</strong>. Faça login
+                novamente para continuar.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={enviar} className="mt-6 grid gap-4">
             <div className="grid gap-1.5">

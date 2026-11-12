@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { desconectarSeSessaoExpirou } from "@/lib/inatividade";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -41,6 +42,9 @@ export const Route = createFileRoute("/")({
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
     if (data?.session?.user) {
+      if (await desconectarSeSessaoExpirou()) {
+        throw redirect({ to: "/auth", search: { motivo: "inatividade" } });
+      }
       throw redirect({ to: "/painel" });
     } else {
       throw redirect({ to: "/auth" });
@@ -173,28 +177,26 @@ function Entrada() {
   const [videoSelecionado, setVideoSelecionado] = useState<VideoDemonstrativo | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const logado = !!data.session?.user;
+    const aplicarDestino = async (logado: boolean) => {
       setEstaLogado(logado);
-      if (typeof window !== "undefined") {
-        if (logado) {
-          window.location.replace("/painel");
-        } else {
-          window.location.replace("/auth");
-        }
+      if (typeof window === "undefined") return;
+      if (!logado) {
+        window.location.replace("/auth");
+        return;
       }
+      if (await desconectarSeSessaoExpirou()) {
+        window.location.replace("/auth?motivo=inatividade");
+        return;
+      }
+      window.location.replace("/painel");
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
+      void aplicarDestino(!!data.session?.user);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      const logado = !!session?.user;
-      setEstaLogado(logado);
-      if (typeof window !== "undefined") {
-        if (logado) {
-          window.location.replace("/painel");
-        } else {
-          window.location.replace("/auth");
-        }
-      }
+      void aplicarDestino(!!session?.user);
     });
 
     return () => {

@@ -18,6 +18,7 @@ import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { ModalDownloads } from "@/components/ModalDownloads";
 import { supabase } from "@/integrations/supabase/client";
+import { limparMotivoInatividade, limparRegistroInatividade } from "@/lib/inatividade";
 
 const NAV = [
   { to: "/painel", label: "Painel", icon: LayoutDashboard },
@@ -42,6 +43,8 @@ export function AppShell({
   const [modalDownloadsAberto, setModalDownloadsAberto] = useState(false);
 
   async function sair() {
+    limparRegistroInatividade();
+    limparMotivoInatividade();
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -64,7 +67,8 @@ export function AppShell({
                   to={item.to}
                   className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
                   activeProps={{
-                    className: "bg-secondary text-foreground shadow-sm shadow-black/20 font-semibold",
+                    className:
+                      "bg-secondary text-foreground shadow-sm shadow-black/20 font-semibold",
                   }}
                 >
                   {item.label}
@@ -83,7 +87,13 @@ export function AppShell({
               <span className="hidden sm:inline">Downloads</span>
             </Button>
 
-            <Button variant="ghost" size="icon" onClick={sair} aria-label="Sair" title="Sair do sistema">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={sair}
+              aria-label="Sair"
+              title="Sair do sistema"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
             <Button

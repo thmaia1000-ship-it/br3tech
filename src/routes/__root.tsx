@@ -40,8 +40,16 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
   if (isRedirect(error)) {
     if (typeof window !== "undefined") {
-      const destino = error?.options?.to || "/auth";
-      window.location.href = destino;
+      const base = error?.options?.to || "/auth";
+      const searchObj = error?.options?.search as Record<string, unknown> | undefined;
+      const params = new URLSearchParams();
+      if (searchObj && typeof searchObj === "object") {
+        for (const [k, v] of Object.entries(searchObj)) {
+          if (v !== undefined && v !== null) params.set(k, String(v));
+        }
+      }
+      const query = params.toString();
+      window.location.href = query ? `${base}?${query}` : base;
       return null;
     }
     throw error;
