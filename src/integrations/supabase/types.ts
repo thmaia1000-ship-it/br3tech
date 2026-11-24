@@ -8,6 +8,22 @@ export type Database = {
   };
   public: {
     Tables: {
+      cobrancas_mp: {
+        Row: {
+          id: string;
+          os_id: string | null;
+          descricao: string;
+          valor: number;
+          recebido: number;
+          link: string | null;
+          status: string;
+          criado_por: string;
+          criado_em: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       clientes: {
         Row: {
           created_at: string;

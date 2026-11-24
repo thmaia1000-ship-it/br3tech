@@ -1,3 +1,5 @@
+import { CobrancasMP } from "@/components/CobrancasMP";
+import { useCobrancasMP } from "@/lib/cobrancas-mp";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -153,9 +155,12 @@ function Financeiro() {
   });
 
   // Métricas financeiras consolidadas
+  const cobrancas = useCobrancasMP();
+  const porOS = new Map(cobrancas.data?.filter(c => c.os_id).map(c => [c.os_id, c]));
+  const avulsasMP = (cobrancas.data ?? []).filter(c => !c.os_id).reduce((soma, c) => soma + c.recebido, 0);
   const totalRecebidoOS = ordensServico
     .filter((o) => o.status === "entregue")
-    .reduce((acc, o) => acc + (Number(o.valor_pecas) + Number(o.valor_mao_obra)), 0);
+    .reduce((acc, o) => acc + (porOS.get(o.id)?.recebido ?? (Number(o.valor_pecas) + Number(o.valor_mao_obra))), 0);
 
   const totalPrevisaoBancada = ordensServico
     .filter(
@@ -165,7 +170,7 @@ function Financeiro() {
     .reduce((acc, o) => acc + (Number(o.valor_pecas) + Number(o.valor_mao_obra)), 0);
 
   const totalRecibosAvulsos = recibos.reduce((acc, r) => acc + (Number(r.valor) || 0), 0);
-  const totalGeralRecebido = totalRecebidoOS + totalRecibosAvulsos;
+  const totalGeralRecebido = totalRecebidoOS + totalRecibosAvulsos + avulsasMP;
 
   // Estado do formulário de novo recibo
   const [formNumero, setFormNumero] = useState("");
@@ -304,7 +309,7 @@ function Financeiro() {
               <span>Faturamento de OSs</span>
               <CheckCircle2 className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-xl font-bold font-mono text-foreground">{moeda(totalRecebidoOS)}</p>
+            <p className="text-xl font-bold font-mono text-foreground">{cobrancas.data ? moeda(totalRecebidoOS) : "—"}</p>
             <p className="text-[11px] text-muted-foreground">Ordens de serviço entregues</p>
           </div>
 
@@ -324,14 +329,15 @@ function Financeiro() {
               <span>Total Consolidado</span>
               <TrendingUp className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-xl font-black font-mono text-primary">{moeda(totalGeralRecebido)}</p>
+            <p className="text-xl font-black font-mono text-primary">{cobrancas.data ? moeda(totalGeralRecebido) : "—"}</p>
             <p className="text-[11px] text-primary/80 font-medium">
-              OSs entregues + Recibos avulsos
+              Recebimentos de OSs, recibos e cobranças avulsas
             </p>
           </div>
         </div>
 
         {/* ========================================================================= */}
+        <CobrancasMP />
         {/* ABAS DO MÓDULO FINANCEIRO                                                 */}
         {/* ========================================================================= */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2">
@@ -564,14 +570,13 @@ function Financeiro() {
                     Faturamento por Ordens de Serviço Entregues
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Histórico de OSs que foram concluídas e entregues aos clientes com quitação
-                    registrada.
+                    Histórico de OSs que foram concluídas e entregues aos clientes.
                   </p>
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-muted-foreground block">Total Entregue</span>
                   <span className="text-lg font-black font-mono text-primary">
-                    {moeda(totalRecebidoOS)}
+                    {cobrancas.data ? moeda(totalRecebidoOS) : "—"}
                   </span>
                 </div>
               </div>
@@ -605,7 +610,7 @@ function Financeiro() {
 
                           <div className="flex items-center gap-3">
                             <span className="font-mono font-bold text-foreground">
-                              {moeda(totalOS)}
+                              {moeda(totalOS)} {porOS.get(os.id)?.status}
                             </span>
                             <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
                               <Link to="/ordens/$id" params={{ id: os.id }}>
