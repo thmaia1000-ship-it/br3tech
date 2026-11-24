@@ -1250,7 +1250,7 @@ export function TermoGarantiaModal({
                   </div>
                   <div className="border-l border-slate-200 pl-1">
                     <span className="block text-[8px] uppercase text-slate-600 font-extrabold print:text-[7px]">
-                      {modo === "finalizada" ? "Total Pago" : "Total Estimado"}
+                      {modo === "finalizada" ? "Valor da OS" : "Total Estimado"}
                     </span>
                     <span className="text-xs font-black text-slate-950 print:text-[10px]">
                       {moeda(total)}

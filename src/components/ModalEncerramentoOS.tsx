@@ -71,6 +71,7 @@ interface ModalEncerramentoOSProps {
   diagnostico?: string;
   encerramentoAtual?: EncerramentoOS | null;
   onSalvarEncerramento: (novoEncerramento: EncerramentoOS) => Promise<void>;
+  onCobrarMP?: ((saida: EncerramentoOS) => Promise<void>) | undefined;
   podeConcluirOS?: boolean;
   onConcluirOS?: (dadosPagamento?: PagamentoOS) => Promise<void>;
   onEmitirRecibo?: (recibo: ReciboAvulso) => void;
@@ -93,6 +94,7 @@ export function ModalEncerramentoOS({
   diagnostico,
   encerramentoAtual,
   onSalvarEncerramento,
+  onCobrarMP,
   podeConcluirOS = false,
   onConcluirOS,
   onEmitirRecibo,
@@ -990,6 +992,22 @@ export function ModalEncerramentoOS({
                 </div>
               </div>
 
+              {onCobrarMP && !pagamentoExistente && totalCalculadoOS > 0 && (
+                <div className="rounded-xl border p-3 space-y-2">
+                  <p className="text-sm">Gere um link de {moeda(totalCalculadoOS)} para o cliente pagar após a entrega.</p>
+                  <Button type="button" disabled={concluindo || salvando} onClick={async () => {
+                    setConcluindo(true);
+                    try {
+                      await onCobrarMP({ checklistSaida: checklist, diagnosticoHardware: diagnosticoHardware || null,
+                        observacoesSaida: obsSaida.trim(), encerradoEm: new Date().toISOString(), pagamento: null });
+                      toast.success("OS entregue. Copie o link na cobrança da OS.");
+                      onFechar();
+                    } catch (erro) {
+                      toast.error(erro instanceof Error ? erro.message : "Falha ao gerar cobrança.");
+                    } finally { setConcluindo(false); }
+                  }}>Encerrar e cobrar pelo Mercado Pago</Button>
+                </div>
+              )}
               {/* 1. Tipo de Pagamento */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">

@@ -1,3 +1,5 @@
+import { CobrancasMP } from "@/components/CobrancasMP";
+import { gerarCobrancaMP } from "@/lib/cobrancas-mp";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -703,6 +705,7 @@ function DetalheOS() {
           </section>
 
           {/* CARD DE FATURAMENTO E PAGAMENTO */}
+          {status === "entregue" && <CobrancasMP osId={os.id} />}
           {encerramento?.pagamento ? (
             <section className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/5 p-5 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
@@ -997,7 +1000,7 @@ function DetalheOS() {
                   <span className="font-semibold text-foreground">{dataHora(os.entregue_em)}</span>
                 </div>
                 <div className="flex justify-between items-center py-0.5 border-b border-border/40">
-                  <span className="text-muted-foreground">Valor Total Pago:</span>
+                  <span className="text-muted-foreground">Valor total da OS:</span>
                   <span className="font-bold text-primary text-sm">{moeda(total)}</span>
                 </div>
                 <div className="flex justify-between items-center py-0.5 border-b border-border/40">
@@ -1316,6 +1319,16 @@ function DetalheOS() {
         diagnostico={os.diagnostico || undefined}
         encerramentoAtual={encerramento}
         onSalvarEncerramento={salvarEncerramento}
+        onCobrarMP={status === "em_reparo" || status === "pronta" ? async (saida) => {
+          const estado = serializarEstadoEConferencia(conferencia, observacoesFisicas, midias, assinaturaAutorizacao, saida);
+          try {
+            await gerarCobrancaMP({ osId: os.id, estado, versao: os.updated_at });
+          } finally {
+            for (const key of [["os", id], ["ordens"], ["painel"], ["ordens-financeiro-metricas"], ["cobrancas-mp"]]) {
+              void queryClient.invalidateQueries({ queryKey: key });
+            }
+          }
+        } : undefined}
         podeConcluirOS={status !== "entregue"}
         abaInicial={abaModalEncerramento}
         onConcluirOS={async (dadosPagamento) => {
